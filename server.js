@@ -45,8 +45,7 @@ const IngredientSchema = new mongoose.Schema({
   unit: { type: String, required: true },
   stock: { type: Number, required: true, default: 0 },
   cost: { type: Number, required: true, default: 0 },
-  minStock: { type: Number, required: true, default: 0 },
-  ownerId: { type: String, required: true }
+  minStock: { type: Number, required: true, default: 0 }
 });
 
 const MenuItemSchema = new mongoose.Schema({
@@ -56,8 +55,7 @@ const MenuItemSchema = new mongoose.Schema({
   category: { type: String, required: true }, // 'Coffee' | 'MilkTea' | 'Tea' | 'Topping' | etc.
   emoji: { type: String, default: '☕' },
   recipe: { type: mongoose.Schema.Types.Mixed, default: {} }, // ingId -> qty
-  image: { type: String, default: '' }, // base64 string
-  ownerId: { type: String, required: true }
+  image: { type: String, default: '' } // base64 string
 });
 
 const OrderSchema = new mongoose.Schema({
@@ -69,8 +67,7 @@ const OrderSchema = new mongoose.Schema({
   paymentMethod: { type: String, required: true }, // 'Tiền mặt' | 'Chuyển khoản'
   status: { type: String, required: true, default: 'completed' },
   cashReceived: { type: Number, required: true },
-  cashChange: { type: Number, required: true },
-  ownerId: { type: String, required: true }
+  cashChange: { type: Number, required: true }
 });
 
 const WasteSchema = new mongoose.Schema({
@@ -82,8 +79,7 @@ const WasteSchema = new mongoose.Schema({
   unit: { type: String, required: true },
   cost: { type: Number, required: true },
   reason: { type: String, required: true },
-  reportedBy: { type: String, required: true },
-  ownerId: { type: String, required: true }
+  reportedBy: { type: String, required: true }
 });
 
 const ShiftSchema = new mongoose.Schema({
@@ -92,8 +88,7 @@ const ShiftSchema = new mongoose.Schema({
   shiftName: { type: String, required: true }, // 'Ca sáng' | 'Ca chiều'
   timeRange: { type: String, required: true }, // '06:30 - 12:30', etc.
   employeeId: { type: String, default: '' },
-  employeeName: { type: String, default: '' },
-  ownerId: { type: String, required: true }
+  employeeName: { type: String, default: '' }
 });
 
 const ShiftRequestSchema = new mongoose.Schema({
@@ -106,8 +101,7 @@ const ShiftRequestSchema = new mongoose.Schema({
   requestedTimeRange: { type: String, default: '' },
   reason: { type: String, default: '' },
   status: { type: String, required: true, default: 'pending' }, // 'pending' | 'approved' | 'rejected'
-  timestamp: { type: String, required: true },
-  ownerId: { type: String, required: true }
+  timestamp: { type: String, required: true }
 });
 
 const AttendanceSchema = new mongoose.Schema({
@@ -120,14 +114,12 @@ const AttendanceSchema = new mongoose.Schema({
   durationHours: { type: Number, default: 0 },
   checkInPhoto: { type: String, default: '' },
   checkOutPhoto: { type: String, default: '' },
-  paidStatus: { type: String, default: 'unpaid' }, // 'unpaid' | 'paid'
-  ownerId: { type: String, required: true }
+  paidStatus: { type: String, default: 'unpaid' } // 'unpaid' | 'paid'
 });
 
 const MenuCategorySchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
-  name: { type: String, required: true },
-  ownerId: { type: String, required: true }
+  name: { type: String, required: true }
 });
 
 const ConfigSchema = new mongoose.Schema({
@@ -151,9 +143,7 @@ const Config = mongoose.model('Config', ConfigSchema);
 // ==========================================================================
 
 const DEFAULT_USERS = [
-  { id: 'usr-admin', username: 'admin', password: '123', name: 'Admin đẹp trai', role: 'dev-admin', hourlyWage: 30000, salaryCycle: 'weekly', salaryStartDate: '2026-06-01' },
-  { id: 'usr-manager', username: 'manager', password: '123', name: 'Anh Quản Lý', role: 'manager', hourlyWage: 25000, salaryCycle: 'weekly', salaryStartDate: '2026-06-01' },
-  { id: 'usr-staff', username: 'staff', password: '123', name: 'Bé Nhân Viên', role: 'employee', hourlyWage: 20000, salaryCycle: 'weekly', salaryStartDate: '2026-06-01' }
+  { id: 'usr-admin', username: '13022005uit', password: '13022005', name: 'Admin', role: 'dev-admin', hourlyWage: 30000, salaryCycle: 'weekly', salaryStartDate: '2026-06-01' }
 ];
 
 const DEFAULT_INGREDIENTS = [
@@ -173,20 +163,20 @@ const DEFAULT_MENU = [
 ];
 
 const DEFAULT_SHIFTS = [
-  { id: 'sh-1', dayOfWeek: 1, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: 'usr-staff', employeeName: 'Bé Nhân Viên' },
+  { id: 'sh-1', dayOfWeek: 1, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: '', employeeName: '' },
   { id: 'sh-2', dayOfWeek: 1, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: '', employeeName: '' },
-  { id: 'sh-3', dayOfWeek: 2, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: 'usr-staff', employeeName: 'Bé Nhân Viên' },
+  { id: 'sh-3', dayOfWeek: 2, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: '', employeeName: '' },
   { id: 'sh-4', dayOfWeek: 2, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: '', employeeName: '' },
   { id: 'sh-5', dayOfWeek: 3, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: '', employeeName: '' },
-  { id: 'sh-6', dayOfWeek: 3, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: 'usr-staff', employeeName: 'Bé Nhân Viên' },
-  { id: 'sh-7', dayOfWeek: 4, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: 'usr-staff', employeeName: 'Bé Nhân Viên' },
+  { id: 'sh-6', dayOfWeek: 3, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: '', employeeName: '' },
+  { id: 'sh-7', dayOfWeek: 4, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: '', employeeName: '' },
   { id: 'sh-8', dayOfWeek: 4, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: '', employeeName: '' },
-  { id: 'sh-9', dayOfWeek: 5, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: 'usr-staff', employeeName: 'Bé Nhân Viên' },
-  { id: 'sh-10', dayOfWeek: 5, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: 'usr-staff', employeeName: 'Bé Nhân Viên' },
+  { id: 'sh-9', dayOfWeek: 5, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: '', employeeName: '' },
+  { id: 'sh-10', dayOfWeek: 5, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: '', employeeName: '' },
   { id: 'sh-11', dayOfWeek: 6, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: '', employeeName: '' },
-  { id: 'sh-12', dayOfWeek: 6, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: 'usr-manager', employeeName: 'Anh Quản Lý' },
+  { id: 'sh-12', dayOfWeek: 6, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: '', employeeName: '' },
   { id: 'sh-13', dayOfWeek: 0, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: '', employeeName: '' },
-  { id: 'sh-14', dayOfWeek: 0, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: 'usr-manager', employeeName: 'Anh Quản Lý' }
+  { id: 'sh-14', dayOfWeek: 0, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: '', employeeName: '' }
 ];
 
 const DEFAULT_CATEGORIES = [
@@ -195,23 +185,12 @@ const DEFAULT_CATEGORIES = [
   { id: 'milktea', name: 'Trà sữa' }
 ];
 
-const ADMIN_USER = {
-  id: 'usr-admin',
-  username: '13022005uit',
-  password: '13022005',
-  name: 'Admin',
-  role: 'dev-admin',
-  hourlyWage: 30000,
-  salaryCycle: 'weekly',
-  salaryStartDate: '2026-06-01'
-};
-
 async function initializeDatabase() {
   const userCount = await User.countDocuments();
   if (userCount === 0) {
-    await User.create(ADMIN_USER);
+    await User.insertMany(DEFAULT_USERS);
     await Config.create({ bypassLogin: false, activeUser: null });
-    console.log('🌱 Admin user seeded successfully!');
+    console.log('🌱 Default database initialized with Admin user!');
   }
 }
 
@@ -219,119 +198,176 @@ async function initializeDatabase() {
 initializeDatabase();
 
 // ==========================================================================
+// Dynamic Database Connection Cache & Middleware
+// ==========================================================================
+
+const dbCache = {};
+function getTenantModel(dbName, modelName, schema) {
+  if (modelName === 'User') {
+    return User;
+  }
+  if (!dbCache[dbName]) {
+    dbCache[dbName] = mongoose.connection.useDb(dbName, { useCache: true });
+  }
+  return dbCache[dbName].model(modelName, schema);
+}
+
+// Middleware to extract database name based on x-user-id header
+app.use((req, res, next) => {
+  const userId = req.headers['x-user-id'];
+  if (userId) {
+    req.dbName = `no-coffee-${userId}`;
+  } else {
+    req.dbName = 'no-coffee';
+  }
+  next();
+});
+
+// ==========================================================================
 // API Routing
 // ==========================================================================
 
-// GET database state - hỗ trợ lọc theo userId để tách biệt dữ liệu hoàn toàn
-app.get('/api/db', async (req, res) => {
-    try {
-        const { userId } = req.query;
-        if (!userId) {
-            return res.json({
-                users: [],
-                ingredients: [],
-                menu: [],
-                orders: [],
-                waste: [],
-                shifts: [],
-                shiftRequests: [],
-                attendance: [],
-                categories: [],
-                config: { bypassLogin: false, activeUser: null }
-            });
-        }
-
-        const user = await User.findOne({ id: userId });
-        if (!user) {
-            return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
-        }
-
-        // 30 days attendance cleanup
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - 30);
-        const cutoffStr = `${cutoffDate.getFullYear()}-${(cutoffDate.getMonth() + 1).toString().padStart(2, '0')}-${cutoffDate.getDate().toString().padStart(2, '0')}`;
-        await Attendance.deleteMany({ date: { $lt: cutoffStr } });
-
-        let usersQuery = { id: userId };
-        let shiftsQuery = { ownerId: userId };
-        let shiftRequestsQuery = { ownerId: userId };
-        let attendanceQuery = { ownerId: userId };
-
-        if (user.role === 'manager') {
-            // Manager xem được thông tin của mình + tất cả nhân viên do mình quản lý
-            const employees = await User.find({ managerId: userId });
-            const employeeIds = employees.map(emp => emp.id);
-            const allIds = [userId, ...employeeIds];
-
-            usersQuery = { $or: [{ id: userId }, { managerId: userId }] };
-            // Manager xem/quản lý ca trực, đổi lịch và chấm công của nhân viên
-            shiftsQuery = { ownerId: { $in: allIds } };
-            shiftRequestsQuery = { ownerId: { $in: allIds } };
-            attendanceQuery = { ownerId: { $in: allIds } };
-        } else if (user.role === 'dev-admin') {
-            // Dev Admin quản trị cao nhất, xem toàn bộ dữ liệu của hệ thống
-            usersQuery = {};
-            shiftsQuery = {};
-            shiftRequestsQuery = {};
-            attendanceQuery = {};
-        }
-
-        // Dữ liệu kho nguyên liệu, thực đơn, phân nhóm, đơn hàng, hao hụt hoàn toàn tách biệt
-        // (Dev admin xem hết, manager/employee chỉ xem của riêng họ)
-        let dataFilter = { ownerId: userId };
-        if (user.role === 'dev-admin') {
-            dataFilter = {};
-        }
-
-        const users = await User.find(usersQuery);
-        const ingredients = await Ingredient.find(dataFilter);
-        const menu = await MenuItem.find(dataFilter);
-        const orders = await Order.find(dataFilter);
-        const waste = await Waste.find(dataFilter);
-        const categories = await MenuCategory.find(dataFilter);
-
-        const shifts = await Shift.find(shiftsQuery);
-        const shiftRequests = await ShiftRequest.find(shiftRequestsQuery);
-        const attendance = await Attendance.find(attendanceQuery);
-
-        res.json({
-            users,
-            ingredients,
-            menu,
-            orders,
-            waste,
-            shifts,
-            shiftRequests,
-            attendance,
-            categories,
-            config: {
-                bypassLogin: false,
-                activeUser: user
-            }
-        });
-    } catch (err) {
-        res.status(500).json({ error: 'Lỗi khi tải Database từ server', details: err.message });
+// POST /api/auth/login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Thiếu thông tin đăng nhập' });
     }
+
+    const normalizedUsername = username.trim().toLowerCase();
+    const user = await User.findOne({ username: normalizedUsername });
+    if (!user || user.password !== password) {
+      return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không chính xác' });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        role: user.role,
+        managerId: user.managerId
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi đăng nhập', details: err.message });
+  }
+});
+
+// GET database state
+app.get('/api/db', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    if (!userId) {
+      return res.status(401).json({ error: 'Chưa cung cấp thông tin tài khoản (x-user-id)' });
+    }
+
+    const currentUser = await User.findOne({ id: userId });
+    if (!currentUser) {
+      return res.status(404).json({ error: 'Không tìm thấy người dùng' });
+    }
+
+    // 30 days attendance cleanup
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 30);
+    const cutoffStr = `${cutoffDate.getFullYear()}-${(cutoffDate.getMonth() + 1).toString().padStart(2, '0')}-${cutoffDate.getDate().toString().padStart(2, '0')}`;
+    const TenantAttendance = getTenantModel(req.dbName, 'Attendance', AttendanceSchema);
+    await TenantAttendance.deleteMany({ date: { $lt: cutoffStr } });
+
+    // Fetch users globally based on role restrictions
+    let usersQuery = {};
+    if (currentUser.role === 'manager') {
+      usersQuery = { $or: [{ id: currentUser.id }, { managerId: currentUser.id }] };
+    } else if (currentUser.role === 'employee') {
+      usersQuery = { $or: [{ id: currentUser.id }, { id: currentUser.managerId }] };
+    } else if (currentUser.role === 'dev-admin') {
+      usersQuery = {}; // Admin sees all
+    }
+    const users = await User.find(usersQuery);
+
+    // Fetch other models dynamically from tenant's database
+    const TenantIngredient = getTenantModel(req.dbName, 'Ingredient', IngredientSchema);
+    const TenantMenuItem = getTenantModel(req.dbName, 'MenuItem', MenuItemSchema);
+    const TenantOrder = getTenantModel(req.dbName, 'Order', OrderSchema);
+    const TenantWaste = getTenantModel(req.dbName, 'Waste', WasteSchema);
+    const TenantShift = getTenantModel(req.dbName, 'Shift', ShiftSchema);
+    const TenantShiftRequest = getTenantModel(req.dbName, 'ShiftRequest', ShiftRequestSchema);
+    const TenantCategory = getTenantModel(req.dbName, 'MenuCategory', MenuCategorySchema);
+    const TenantConfig = getTenantModel(req.dbName, 'Config', ConfigSchema);
+
+    const ingredients = await TenantIngredient.find();
+    const menu = await TenantMenuItem.find();
+    const orders = await TenantOrder.find();
+    const waste = await TenantWaste.find();
+    const shifts = await TenantShift.find();
+    const shiftRequests = await TenantShiftRequest.find();
+    const attendance = await TenantAttendance.find();
+    const categories = await TenantCategory.find();
+    let config = await TenantConfig.findOne();
+    if (!config) {
+      config = await TenantConfig.create({ bypassLogin: false, activeUser: null });
+    }
+
+    res.json({
+      users,
+      ingredients,
+      menu,
+      orders,
+      waste,
+      shifts,
+      shiftRequests,
+      attendance,
+      categories,
+      config: {
+        bypassLogin: config.bypassLogin,
+        activeUser: config.activeUser
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi khi tải Database từ server', details: err.message });
+  }
 });
 
 // POST reset database
 app.post('/api/db/reset', async (req, res) => {
   try {
-    await User.deleteMany();
-    await Ingredient.deleteMany();
-    await MenuItem.deleteMany();
-    await Order.deleteMany();
-    await Waste.deleteMany();
-    await Shift.deleteMany();
-    await ShiftRequest.deleteMany();
-    await Attendance.deleteMany();
-    await MenuCategory.deleteMany();
-    await Config.deleteMany();
+    const TenantIngredient = getTenantModel(req.dbName, 'Ingredient', IngredientSchema);
+    const TenantMenuItem = getTenantModel(req.dbName, 'MenuItem', MenuItemSchema);
+    const TenantOrder = getTenantModel(req.dbName, 'Order', OrderSchema);
+    const TenantWaste = getTenantModel(req.dbName, 'Waste', WasteSchema);
+    const TenantShift = getTenantModel(req.dbName, 'Shift', ShiftSchema);
+    const TenantShiftRequest = getTenantModel(req.dbName, 'ShiftRequest', ShiftRequestSchema);
+    const TenantAttendance = getTenantModel(req.dbName, 'Attendance', AttendanceSchema);
+    const TenantCategory = getTenantModel(req.dbName, 'MenuCategory', MenuCategorySchema);
+    const TenantConfig = getTenantModel(req.dbName, 'Config', ConfigSchema);
 
-    await User.create(ADMIN_USER);
-    await Config.create({ bypassLogin: false, activeUser: null });
+    await TenantIngredient.deleteMany();
+    await TenantMenuItem.deleteMany();
+    await TenantOrder.deleteMany();
+    await TenantWaste.deleteMany();
+    await TenantShift.deleteMany();
+    await TenantShiftRequest.deleteMany();
+    await TenantAttendance.deleteMany();
+    await TenantCategory.deleteMany();
+    await TenantConfig.deleteMany();
 
-    res.json({ success: true, message: 'Reset cơ sở dữ liệu thành công! Chỉ giữ lại tài khoản Admin.' });
+    const userId = req.headers['x-user-id'];
+    const currentUser = await User.findOne({ id: userId });
+    if (currentUser && currentUser.role === 'dev-admin') {
+      await User.deleteMany();
+      await User.insertMany(DEFAULT_USERS);
+    }
+
+    // Seed defaults in tenant database on reset
+    await TenantIngredient.insertMany(DEFAULT_INGREDIENTS);
+    await TenantMenuItem.insertMany(DEFAULT_MENU);
+    await TenantShift.insertMany(DEFAULT_SHIFTS);
+    await TenantCategory.insertMany(DEFAULT_CATEGORIES);
+    await TenantConfig.create({ bypassLogin: false, activeUser: null });
+
+    res.json({ success: true, message: 'Reset cơ sở dữ liệu thành công!' });
   } catch (err) {
     res.status(500).json({ error: 'Lỗi khi reset database', details: err.message });
   }
@@ -340,26 +376,51 @@ app.post('/api/db/reset', async (req, res) => {
 // POST seed 30 days
 app.post('/api/db/seed', async (req, res) => {
   try {
+    const TenantIngredient = getTenantModel(req.dbName, 'Ingredient', IngredientSchema);
+    const TenantMenuItem = getTenantModel(req.dbName, 'MenuItem', MenuItemSchema);
+    const TenantOrder = getTenantModel(req.dbName, 'Order', OrderSchema);
+    const TenantWaste = getTenantModel(req.dbName, 'Waste', WasteSchema);
+    const TenantShift = getTenantModel(req.dbName, 'Shift', ShiftSchema);
+    const TenantShiftRequest = getTenantModel(req.dbName, 'ShiftRequest', ShiftRequestSchema);
+    const TenantAttendance = getTenantModel(req.dbName, 'Attendance', AttendanceSchema);
+    const TenantCategory = getTenantModel(req.dbName, 'MenuCategory', MenuCategorySchema);
+
     // Clear dynamic logs
-    await Order.deleteMany();
-    await Waste.deleteMany();
-    await Attendance.deleteMany();
+    await TenantOrder.deleteMany();
+    await TenantWaste.deleteMany();
+    await TenantAttendance.deleteMany();
+
+    // If menu or categories are empty, seed them as well
+    const categoryCount = await TenantCategory.countDocuments();
+    if (categoryCount === 0) {
+      await TenantCategory.insertMany(DEFAULT_CATEGORIES);
+    }
+
+    const menuCount = await TenantMenuItem.countDocuments();
+    if (menuCount === 0) {
+      await TenantMenuItem.insertMany(DEFAULT_MENU);
+    }
+
+    const shiftCount = await TenantShift.countDocuments();
+    if (shiftCount === 0) {
+      await TenantShift.insertMany(DEFAULT_SHIFTS);
+    }
 
     // Reset stock to default high to allow deductions in logs
-    await Ingredient.deleteMany();
+    await TenantIngredient.deleteMany();
     const seedIngredients = DEFAULT_INGREDIENTS.map(ing => ({
       ...ing,
       stock: ing.stock * 5 // 5x stock to avoid negative numbers
     }));
-    await Ingredient.insertMany(seedIngredients);
+    await TenantIngredient.insertMany(seedIngredients);
 
     const now = new Date();
     const ordersToInsert = [];
     const wasteToInsert = [];
     const attendanceToInsert = [];
 
-    const menuItems = await MenuItem.find();
-    const ingredients = await Ingredient.find();
+    const menuItems = await TenantMenuItem.find();
+    const ingredients = await TenantIngredient.find();
 
     const getIngredient = (id) => ingredients.find(ing => ing.id === id);
 
@@ -368,19 +429,17 @@ app.post('/api/db/seed', async (req, res) => {
       const currentDate = new Date(now.getTime() - day * 24 * 60 * 60 * 1000);
       const todayStr = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}-${currentDate.getDate().toString().padStart(2, '0')}`;
 
-      // 1. Attendance for this day (except weekend maybe)
-      const dayOfWeek = currentDate.getDay(); // 0 is CN, 1 is T2, etc.
-
+      // 1. Attendance
+      const dayOfWeek = currentDate.getDay();
       const dayShifts = DEFAULT_SHIFTS.filter(s => s.dayOfWeek === dayOfWeek);
       for (const shift of dayShifts) {
-        // Generate attendance log
         const checkInHour = shift.shiftName === 'Ca sáng' ? 6 : 12;
         const checkOutHour = checkInHour + 6;
         
         attendanceToInsert.push({
-          id: `att-${shift.employeeId}-${todayStr}`,
-          employeeId: shift.employeeId,
-          employeeName: shift.employeeName,
+          id: `att-usr-staff-${todayStr}-${shift.id}`,
+          employeeId: 'usr-staff',
+          employeeName: 'Bé Nhân Viên',
           date: todayStr,
           checkInTime: `${checkInHour.toString().padStart(2, '0')}:00`,
           checkOutTime: `${checkOutHour.toString().padStart(2, '0')}:00`,
@@ -388,16 +447,14 @@ app.post('/api/db/seed', async (req, res) => {
         });
       }
 
-      // 2. Sales Orders (between 10 and 25 per day)
+      // 2. Sales Orders
       const orderCount = Math.floor(Math.random() * 16) + 10;
       for (let orderIndex = 0; orderIndex < orderCount; orderIndex++) {
-        // Random hour between 7:00 and 19:00
         const randHour = Math.floor(Math.random() * 13) + 7;
         const randMinute = Math.floor(Math.random() * 60);
         const orderTime = new Date(currentDate);
         orderTime.setHours(randHour, randMinute, 0, 0);
 
-        // Random items (1 to 3 drinks)
         const cartItemsCount = Math.floor(Math.random() * 3) + 1;
         const items = [];
         let totalPrice = 0;
@@ -406,14 +463,13 @@ app.post('/api/db/seed', async (req, res) => {
         for (let i = 0; i < cartItemsCount; i++) {
           const drink = menuItems[Math.floor(Math.random() * menuItems.length)];
           const size = Math.random() > 0.35 ? 'S' : 'L';
-          const qty = Math.floor(Math.random() * 2) + 1; // 1 or 2
+          const qty = Math.floor(Math.random() * 2) + 1;
           const sugar = ['30%', '50%', '70%', '100%'][Math.floor(Math.random() * 4)];
           const ice = ['50%', '100%'][Math.floor(Math.random() * 2)];
 
           const sizePriceOffset = size === 'L' ? 5000 : 0;
           const unitPrice = drink.price + sizePriceOffset;
 
-          // Calculate COGS
           let itemCogs = 0;
           if (drink.recipe) {
             Object.keys(drink.recipe).forEach(ingId => {
@@ -424,7 +480,6 @@ app.post('/api/db/seed', async (req, res) => {
               const ing = getIngredient(ingId);
               if (ing) {
                 itemCogs += qtyNeeded * ing.cost;
-                // Deduct stock representing history consumption
                 ing.stock = Math.max(0, ing.stock - (qtyNeeded * qty));
               }
             });
@@ -463,13 +518,13 @@ app.post('/api/db/seed', async (req, res) => {
         });
       }
 
-      // 3. Waste logs (roughly 1 event every 4 days)
+      // 3. Waste
       if (Math.random() > 0.75) {
         const ing = ingredients[Math.floor(Math.random() * ingredients.length)];
-        const qty = Math.floor(Math.random() * 5) + 1; // 1 to 5 units
+        const qty = Math.floor(Math.random() * 5) + 1;
         const cost = qty * ing.cost;
         const reason = ['Làm hỏng', 'Hết hạn sử dụng', 'Rơi vỡ', 'Kiến bám'][Math.floor(Math.random() * 4)];
-        const reportedBy = ['Anh Quản Lý', 'Bé Nhân Viên'][Math.floor(Math.random() * 2)];
+        const reportedBy = 'Anh Quản Lý';
         
         wasteToInsert.push({
           id: 'HH-' + Math.floor(100000 + Math.random() * 900000).toString(),
@@ -483,20 +538,17 @@ app.post('/api/db/seed', async (req, res) => {
           reportedBy: reportedBy
         });
 
-        // Deduct from stock
         ing.stock = Math.max(0, ing.stock - qty);
       }
     }
 
-    // Save modified stocks
     for (const ing of ingredients) {
       await ing.save();
     }
 
-    // Bulk insert dynamic logs
-    await Order.insertMany(ordersToInsert);
-    await Waste.insertMany(wasteToInsert);
-    await Attendance.insertMany(attendanceToInsert);
+    await TenantOrder.insertMany(ordersToInsert);
+    await TenantWaste.insertMany(wasteToInsert);
+    await TenantAttendance.insertMany(attendanceToInsert);
 
     res.json({ success: true, message: 'Đã sinh dữ liệu lịch sử thành công!' });
   } catch (err) {
@@ -504,37 +556,34 @@ app.post('/api/db/seed', async (req, res) => {
   }
 });
 
-// POST checkout order (with dynamic stock subtraction)
+// POST checkout order
 app.post('/api/orders/checkout', async (req, res) => {
   try {
     const { order } = req.body;
     if (!order) return res.status(400).json({ error: 'Thông tin đơn hàng bị thiếu' });
 
-    // Deduct stock for each cart item
+    const TenantIngredient = getTenantModel(req.dbName, 'Ingredient', IngredientSchema);
+    const TenantOrder = getTenantModel(req.dbName, 'Order', OrderSchema);
+
+    // Deduct stock
     for (const item of order.items) {
       if (item.recipe) {
         for (const ingId of Object.keys(item.recipe)) {
           let qtyNeeded = item.recipe[ingId];
-          // Size L offset multiplier (x1.3)
           if (item.size === 'L' && ['cf', 'sua', 'suatuoi', 'duong'].includes(ingId)) {
             qtyNeeded = Math.ceil(qtyNeeded * 1.3);
           }
           const totalDeduction = qtyNeeded * item.qty;
 
-          // Find ingredient and subtract stock (scoped to the order's ownerId)
-          await Ingredient.findOneAndUpdate(
-            { id: ingId, ownerId: order.ownerId },
+          await TenantIngredient.findOneAndUpdate(
+            { id: ingId },
             { $inc: { stock: -totalDeduction } }
           );
         }
       }
     }
 
-    // Save order record
-    const newOrder = new Order({
-      ...order,
-      ownerId: order.ownerId
-    });
+    const newOrder = new TenantOrder(order);
     await newOrder.save();
 
     res.json({ success: true });
@@ -546,18 +595,76 @@ app.post('/api/orders/checkout', async (req, res) => {
 // POST restock ingredient
 app.post('/api/inventory/restock', async (req, res) => {
   try {
-    const { id, qty, customCostPerUnit, ownerId } = req.body;
+    const { id, qty, customCostPerUnit } = req.body;
     const updateObj = { $inc: { stock: qty } };
     if (customCostPerUnit !== undefined && customCostPerUnit !== null) {
       updateObj.$set = { cost: customCostPerUnit };
     }
 
-    const updated = await Ingredient.findOneAndUpdate({ id, ownerId }, updateObj, { new: true });
+    const TenantIngredient = getTenantModel(req.dbName, 'Ingredient', IngredientSchema);
+    const updated = await TenantIngredient.findOneAndUpdate({ id }, updateObj, { new: true });
     if (!updated) return res.status(404).json({ error: 'Không tìm thấy nguyên liệu' });
 
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Lỗi nhập kho nguyên liệu', details: err.message });
+  }
+});
+
+// POST add ingredient
+app.post('/api/inventory/add', async (req, res) => {
+  try {
+    const { name, unit, stock, cost, minStock } = req.body;
+    if (!name || !unit) {
+      return res.status(400).json({ error: 'Tên và đơn vị nguyên liệu không được trống' });
+    }
+
+    const TenantIngredient = getTenantModel(req.dbName, 'Ingredient', IngredientSchema);
+    const id = 'ing-' + Date.now().toString().slice(-6);
+    const newIng = new TenantIngredient({
+      id,
+      name,
+      unit,
+      stock: Number(stock) || 0,
+      cost: Number(cost) || 0,
+      minStock: Number(minStock) || 0
+    });
+    await newIng.save();
+    res.json({ success: true, ingredient: newIng });
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi thêm nguyên liệu', details: err.message });
+  }
+});
+
+// POST update ingredient
+app.post('/api/inventory/update', async (req, res) => {
+  try {
+    const { id, name, unit, stock, cost, minStock } = req.body;
+    const TenantIngredient = getTenantModel(req.dbName, 'Ingredient', IngredientSchema);
+    const updated = await TenantIngredient.findOneAndUpdate(
+      { id },
+      { $set: { name, unit, stock: Number(stock) || 0, cost: Number(cost) || 0, minStock: Number(minStock) || 0 } },
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ error: 'Không tìm thấy nguyên liệu' });
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi cập nhật nguyên liệu', details: err.message });
+  }
+});
+
+// POST delete ingredient
+app.post('/api/inventory/delete', async (req, res) => {
+  try {
+    const { id } = req.body;
+    const TenantIngredient = getTenantModel(req.dbName, 'Ingredient', IngredientSchema);
+    const deleted = await TenantIngredient.findOneAndDelete({ id });
+    if (!deleted) return res.status(404).json({ error: 'Không tìm thấy nguyên liệu để xoá' });
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi xoá nguyên liệu', details: err.message });
   }
 });
 
@@ -567,16 +674,14 @@ app.post('/api/waste', async (req, res) => {
     const { wasteRecord } = req.body;
     if (!wasteRecord) return res.status(400).json({ error: 'Thiếu log hao hụt' });
 
-    // Save waste record
-    const newWaste = new Waste({
-      ...wasteRecord,
-      ownerId: wasteRecord.ownerId
-    });
+    const TenantWaste = getTenantModel(req.dbName, 'Waste', WasteSchema);
+    const TenantIngredient = getTenantModel(req.dbName, 'Ingredient', IngredientSchema);
+
+    const newWaste = new TenantWaste(wasteRecord);
     await newWaste.save();
 
-    // Deduct stock (scoped to the waste record's ownerId)
-    await Ingredient.findOneAndUpdate(
-      { id: wasteRecord.ingredientId, ownerId: wasteRecord.ownerId },
+    await TenantIngredient.findOneAndUpdate(
+      { id: wasteRecord.ingredientId },
       { $inc: { stock: -wasteRecord.qty } }
     );
 
@@ -586,17 +691,18 @@ app.post('/api/waste', async (req, res) => {
   }
 });
 
-// POST menu update (price, recipe, base64 image)
+// POST menu update
 app.post('/api/menu/update', async (req, res) => {
   try {
     const { id, price, recipe, image } = req.body;
+    const TenantMenuItem = getTenantModel(req.dbName, 'MenuItem', MenuItemSchema);
 
     const updateObj = {};
     if (price !== undefined) updateObj.price = price;
     if (recipe !== undefined) updateObj.recipe = recipe;
     if (image !== undefined) updateObj.image = image;
 
-    const updated = await MenuItem.findOneAndUpdate({ id }, { $set: updateObj }, { new: true });
+    const updated = await TenantMenuItem.findOneAndUpdate({ id }, { $set: updateObj }, { new: true });
     if (!updated) return res.status(404).json({ error: 'Không tìm thấy món trong thực đơn' });
 
     res.json({ success: true });
@@ -608,18 +714,18 @@ app.post('/api/menu/update', async (req, res) => {
 // POST add menu item
 app.post('/api/menu/add', async (req, res) => {
   try {
-    const { name, price, category, emoji, ownerId } = req.body;
+    const { name, price, category, emoji } = req.body;
+    const TenantMenuItem = getTenantModel(req.dbName, 'MenuItem', MenuItemSchema);
     const id = 'item-' + Date.now().toString().slice(-6);
 
-    const newMenuItem = new MenuItem({
+    const newMenuItem = new TenantMenuItem({
       id,
       name,
       price,
       category,
       emoji,
-      recipe: {}, // start empty
-      image: '',
-      ownerId
+      recipe: {},
+      image: ''
     });
 
     await newMenuItem.save();
@@ -633,7 +739,8 @@ app.post('/api/menu/add', async (req, res) => {
 app.post('/api/menu/delete', async (req, res) => {
   try {
     const { id } = req.body;
-    const deleted = await MenuItem.findOneAndDelete({ id });
+    const TenantMenuItem = getTenantModel(req.dbName, 'MenuItem', MenuItemSchema);
+    const deleted = await TenantMenuItem.findOneAndDelete({ id });
     if (!deleted) return res.status(404).json({ error: 'Không tìm thấy món thực đơn để xoá' });
 
     res.json({ success: true });
@@ -648,19 +755,15 @@ app.post('/api/attendance', async (req, res) => {
     const { attendanceRecord } = req.body;
     if (!attendanceRecord) return res.status(400).json({ error: 'Thiếu thông tin điểm danh' });
 
-    // Look for existing attendance check-in by id
-    const existing = await Attendance.findOne({ id: attendanceRecord.id });
+    const TenantAttendance = getTenantModel(req.dbName, 'Attendance', AttendanceSchema);
+    const existing = await TenantAttendance.findOne({ id: attendanceRecord.id });
     if (existing) {
-      // It's a check-out update
       if (attendanceRecord.checkOutTime) existing.checkOutTime = attendanceRecord.checkOutTime;
       if (attendanceRecord.durationHours !== undefined) existing.durationHours = attendanceRecord.durationHours;
+      if (attendanceRecord.checkOutPhoto) existing.checkOutPhoto = attendanceRecord.checkOutPhoto;
       await existing.save();
     } else {
-      // It's a new check-in
-      const newAttendance = new Attendance({
-        ...attendanceRecord,
-        ownerId: attendanceRecord.employeeId
-      });
+      const newAttendance = new TenantAttendance(attendanceRecord);
       await newAttendance.save();
     }
 
@@ -673,7 +776,8 @@ app.post('/api/attendance', async (req, res) => {
 // POST Shift assignment updates
 app.post('/api/shifts/update', async (req, res) => {
   try {
-    const { id, employeeId, shiftName, timeRange, managerId } = req.body;
+    const { id, employeeId, shiftName, timeRange } = req.body;
+    const TenantShift = getTenantModel(req.dbName, 'Shift', ShiftSchema);
     
     let employeeName = '';
     if (employeeId) {
@@ -681,13 +785,9 @@ app.post('/api/shifts/update', async (req, res) => {
       employeeName = user ? user.name : 'Unknown';
     }
 
-    // Nếu có nhân viên thì gán ownerId là nhân viên đó để họ xem được trong DB của họ.
-    // Nếu trống ca thì chuyển ownerId về managerId.
-    const ownerId = employeeId ? employeeId : managerId;
-
-    await Shift.findOneAndUpdate(
+    await TenantShift.findOneAndUpdate(
       { id },
-      { $set: { employeeId, employeeName, shiftName, timeRange, ownerId } }
+      { $set: { employeeId, employeeName, shiftName, timeRange } }
     );
 
     res.json({ success: true });
@@ -700,11 +800,12 @@ app.post('/api/shifts/update', async (req, res) => {
 app.post('/api/config', async (req, res) => {
   try {
     const { bypassLogin, activeUser } = req.body;
+    const TenantConfig = getTenantModel(req.dbName, 'Config', ConfigSchema);
     const updateObj = {};
     if (bypassLogin !== undefined) updateObj.bypassLogin = bypassLogin;
     if (activeUser !== undefined) updateObj.activeUser = activeUser;
 
-    await Config.findOneAndUpdate({}, { $set: updateObj }, { upsert: true });
+    await TenantConfig.findOneAndUpdate({}, { $set: updateObj }, { upsert: true });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Lỗi cập nhật cấu hình hệ thống', details: err.message });
@@ -715,13 +816,13 @@ app.post('/api/config', async (req, res) => {
 app.post('/api/shift-requests/create', async (req, res) => {
   try {
     const { employeeId, dayOfWeek, requestType, requestedShiftName, requestedTimeRange, reason } = req.body;
+    const TenantShiftRequest = getTenantModel(req.dbName, 'ShiftRequest', ShiftRequestSchema);
     
-    // Find employee name
     const user = await User.findOne({ id: employeeId });
     const employeeName = user ? user.name : 'Nhân Viên';
 
     const id = 'req-' + Date.now().toString().slice(-6) + Math.floor(Math.random() * 100).toString();
-    const newRequest = new ShiftRequest({
+    const newRequest = new TenantShiftRequest({
       id,
       employeeId,
       employeeName,
@@ -731,8 +832,7 @@ app.post('/api/shift-requests/create', async (req, res) => {
       requestedTimeRange,
       reason,
       status: 'pending',
-      timestamp: new Date().toISOString(),
-      ownerId: employeeId
+      timestamp: new Date().toISOString()
     });
 
     await newRequest.save();
@@ -746,22 +846,22 @@ app.post('/api/shift-requests/create', async (req, res) => {
 app.post('/api/shift-requests/approve', async (req, res) => {
   try {
     const { id } = req.body;
-    const request = await ShiftRequest.findOne({ id });
+    const TenantShiftRequest = getTenantModel(req.dbName, 'ShiftRequest', ShiftRequestSchema);
+    const TenantShift = getTenantModel(req.dbName, 'Shift', ShiftSchema);
+
+    const request = await TenantShiftRequest.findOne({ id });
     if (!request) return res.status(404).json({ error: 'Không tìm thấy yêu cầu' });
 
     request.status = 'approved';
     await request.save();
 
-    // Process actual shift update
     if (request.requestType === 'off') {
-      // Set the shift on that day to unassigned instead of deleting it
-      await Shift.findOneAndUpdate(
+      await TenantShift.findOneAndUpdate(
         { employeeId: request.employeeId, dayOfWeek: request.dayOfWeek },
         { $set: { employeeId: '', employeeName: '' } }
       );
     } else if (request.requestType === 'change') {
-      // Update shift details for the employee's shift on that day
-      await Shift.findOneAndUpdate(
+      await TenantShift.findOneAndUpdate(
         { employeeId: request.employeeId, dayOfWeek: request.dayOfWeek },
         { 
           $set: { 
@@ -782,7 +882,8 @@ app.post('/api/shift-requests/approve', async (req, res) => {
 app.post('/api/shift-requests/reject', async (req, res) => {
   try {
     const { id } = req.body;
-    const request = await ShiftRequest.findOneAndUpdate({ id }, { $set: { status: 'rejected' } });
+    const TenantShiftRequest = getTenantModel(req.dbName, 'ShiftRequest', ShiftRequestSchema);
+    const request = await TenantShiftRequest.findOneAndUpdate({ id }, { $set: { status: 'rejected' } });
     if (!request) return res.status(404).json({ error: 'Không tìm thấy yêu cầu' });
 
     res.json({ success: true });
@@ -791,7 +892,7 @@ app.post('/api/shift-requests/reject', async (req, res) => {
   }
 });
 
-// POST add user (manager registers new employee for their store)
+// POST add user (manager registers new employee)
 app.post('/api/users/add', async (req, res) => {
   try {
     const { username, password, name, managerId } = req.body;
@@ -802,7 +903,6 @@ app.post('/api/users/add', async (req, res) => {
       return res.status(400).json({ error: 'Thiếu thông tin quản lý' });
     }
 
-    // Check duplicate
     const existing = await User.findOne({ username: username.trim().toLowerCase() });
     if (existing) {
       return res.status(400).json({ error: 'Tài khoản này đã tồn tại trong hệ thống' });
@@ -815,7 +915,7 @@ app.post('/api/users/add', async (req, res) => {
       password,
       name,
       role: 'employee',
-      managerId: managerId, // Thuộc về manager này
+      managerId: managerId,
       hourlyWage: 20000,
       salaryCycle: 'weekly',
       salaryStartDate: new Date().toISOString().split('T')[0]
@@ -828,15 +928,15 @@ app.post('/api/users/add', async (req, res) => {
   }
 });
 
-// POST delete user (manager removes employee)
+// POST delete user
 app.post('/api/users/delete', async (req, res) => {
   try {
     const { id } = req.body;
     const deleted = await User.findOneAndDelete({ id });
     if (!deleted) return res.status(404).json({ error: 'Không tìm thấy nhân sự' });
 
-    // Set employeeId/employeeName to empty for all their assigned shifts
-    await Shift.updateMany(
+    const TenantShift = getTenantModel(req.dbName, 'Shift', ShiftSchema);
+    await TenantShift.updateMany(
       { employeeId: id },
       { $set: { employeeId: '', employeeName: '' } }
     );
@@ -881,16 +981,16 @@ app.post('/api/users/update-qr', async (req, res) => {
   }
 });
 
-// POST pay salary (completes payment for attendance logs)
+// POST pay salary
 app.post('/api/users/pay-salary', async (req, res) => {
   try {
     const { employeeId, beforeDate } = req.body;
-    // Mark all unpaid attendance logs for this employee as paid
     const query = { employeeId, paidStatus: 'unpaid' };
     if (beforeDate) {
       query.date = { $lte: beforeDate };
     }
-    await Attendance.updateMany(query, { $set: { paidStatus: 'paid' } });
+    const TenantAttendance = getTenantModel(req.dbName, 'Attendance', AttendanceSchema);
+    await TenantAttendance.updateMany(query, { $set: { paidStatus: 'paid' } });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Lỗi hoàn tất thanh toán lương', details: err.message });
@@ -900,11 +1000,12 @@ app.post('/api/users/pay-salary', async (req, res) => {
 // POST add category
 app.post('/api/categories/add', async (req, res) => {
   try {
-    const { name, ownerId } = req.body;
-    if (!name || !ownerId) return res.status(400).json({ error: 'Tên phân nhóm không được để trống hoặc thiếu ownerId' });
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: 'Tên phân nhóm không được để trống' });
 
+    const TenantCategory = getTenantModel(req.dbName, 'MenuCategory', MenuCategorySchema);
     const id = 'cat-' + Date.now().toString().slice(-6);
-    const newCat = new MenuCategory({ id, name, ownerId });
+    const newCat = new TenantCategory({ id, name });
     await newCat.save();
 
     res.json({ success: true });
@@ -917,7 +1018,8 @@ app.post('/api/categories/add', async (req, res) => {
 app.post('/api/categories/update', async (req, res) => {
   try {
     const { id, name } = req.body;
-    const updated = await MenuCategory.findOneAndUpdate({ id }, { $set: { name } }, { new: true });
+    const TenantCategory = getTenantModel(req.dbName, 'MenuCategory', MenuCategorySchema);
+    const updated = await TenantCategory.findOneAndUpdate({ id }, { $set: { name } }, { new: true });
     if (!updated) return res.status(404).json({ error: 'Không tìm thấy phân nhóm' });
 
     res.json({ success: true });
@@ -930,7 +1032,8 @@ app.post('/api/categories/update', async (req, res) => {
 app.post('/api/categories/delete', async (req, res) => {
   try {
     const { id } = req.body;
-    const deleted = await MenuCategory.findOneAndDelete({ id });
+    const TenantCategory = getTenantModel(req.dbName, 'MenuCategory', MenuCategorySchema);
+    const deleted = await TenantCategory.findOneAndDelete({ id });
     if (!deleted) return res.status(404).json({ error: 'Không tìm thấy phân nhóm' });
 
     res.json({ success: true });
@@ -939,73 +1042,19 @@ app.post('/api/categories/delete', async (req, res) => {
   }
 });
 
-// POST add ingredient
-app.post('/api/inventory/add', async (req, res) => {
-  try {
-    const { name, unit, minStock, initialStock, unitCost, ownerId } = req.body;
-    if (!name || !unit || !ownerId) {
-      return res.status(400).json({ error: 'Thiếu thông tin nguyên liệu' });
-    }
-    const id = 'ing-' + Date.now().toString().slice(-6) + Math.floor(Math.random() * 100).toString();
-    const newIng = new Ingredient({
-      id,
-      name,
-      unit,
-      stock: Number(initialStock) || 0,
-      cost: Number(unitCost) || 0,
-      minStock: Number(minStock) || 0,
-      ownerId
-    });
-    await newIng.save();
-    res.json({ success: true, ingredient: newIng });
-  } catch (err) {
-    res.status(500).json({ error: 'Lỗi thêm nguyên liệu mới', details: err.message });
-  }
-});
-
-// POST update ingredient
-app.post('/api/inventory/update', async (req, res) => {
-  try {
-    const { id, name, unit, minStock, cost } = req.body;
-    const updateObj = {};
-    if (name !== undefined) updateObj.name = name;
-    if (unit !== undefined) updateObj.unit = unit;
-    if (minStock !== undefined) updateObj.minStock = Number(minStock);
-    if (cost !== undefined) updateObj.cost = Number(cost);
-
-    const updated = await Ingredient.findOneAndUpdate({ id }, { $set: updateObj }, { new: true });
-    if (!updated) return res.status(404).json({ error: 'Không tìm thấy nguyên liệu' });
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Lỗi chỉnh sửa nguyên liệu', details: err.message });
-  }
-});
-
-// POST delete ingredient
-app.post('/api/inventory/delete', async (req, res) => {
-  try {
-    const { id } = req.body;
-    const deleted = await Ingredient.findOneAndDelete({ id });
-    if (!deleted) return res.status(404).json({ error: 'Không tìm thấy nguyên liệu để xoá' });
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Lỗi khi xoá nguyên liệu', details: err.message });
-  }
-});
-
 // POST create custom shift slot
 app.post('/api/shifts/create', async (req, res) => {
   try {
-    const { dayOfWeek, shiftName, timeRange, ownerId } = req.body;
+    const { dayOfWeek, shiftName, timeRange } = req.body;
+    const TenantShift = getTenantModel(req.dbName, 'Shift', ShiftSchema);
     const id = 'sh-' + Date.now().toString().slice(-6);
-    const newShift = new Shift({
+    const newShift = new TenantShift({
       id,
       dayOfWeek,
       shiftName,
       timeRange,
       employeeId: '',
-      employeeName: '',
-      ownerId
+      employeeName: ''
     });
     await newShift.save();
     res.json({ success: true });
@@ -1018,7 +1067,8 @@ app.post('/api/shifts/create', async (req, res) => {
 app.post('/api/shifts/delete', async (req, res) => {
   try {
     const { id } = req.body;
-    const deleted = await Shift.findOneAndDelete({ id });
+    const TenantShift = getTenantModel(req.dbName, 'Shift', ShiftSchema);
+    const deleted = await TenantShift.findOneAndDelete({ id });
     if (!deleted) return res.status(404).json({ error: 'Không tìm thấy ca làm để xoá' });
 
     res.json({ success: true });
@@ -1027,27 +1077,7 @@ app.post('/api/shifts/delete', async (req, res) => {
   }
 });
 
-// POST auth/login - Đăng nhập tài khoản
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Vui lòng cung cấp đầy đủ tên đăng nhập và mật khẩu' });
-    }
-    const user = await User.findOne({
-      username: username.trim().toLowerCase(),
-      password: password.trim()
-    });
-    if (!user) {
-      return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không chính xác' });
-    }
-    res.json({ success: true, user });
-  } catch (err) {
-    res.status(500).json({ error: 'Lỗi hệ thống khi đăng nhập', details: err.message });
-  }
-});
-
-// POST auth/register - Đăng ký tài khoản Quản lý mới
+// POST auth/register
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password, name } = req.body;
@@ -1055,10 +1085,8 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'Vui lòng nhập đầy đủ thông tin' });
     }
 
-    // Đăng ký bên ngoài luôn tạo role manager, managerId = null
     const userRole = 'manager';
 
-    // Kiểm tra trùng tên đăng nhập
     const existing = await User.findOne({ username: username.trim().toLowerCase() });
     if (existing) {
       return res.status(400).json({ error: 'Tên đăng nhập đã tồn tại! Vui lòng chọn tên khác.' });
@@ -1071,7 +1099,7 @@ app.post('/api/auth/register', async (req, res) => {
       password,
       name: name.trim(),
       role: userRole,
-      managerId: null, // Manager không thuộc về ai
+      managerId: null,
       hourlyWage: 25000,
       salaryCycle: 'weekly',
       salaryStartDate: new Date().toISOString().split('T')[0]

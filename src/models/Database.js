@@ -12,27 +12,69 @@ export class Database {
       shiftRequests: [],
       attendance: [],
       config: {
-        bypassLogin: true,
+        bypassLogin: false,
         activeUser: null
       }
     };
   }
 
-  // Load complete state from MongoDB server
-  async init() {
-    await this.fetchDb();
+  getActiveUser() {
+    try {
+      const stored = localStorage.getItem('no_coffee_active_user');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (e) {
+      console.error('Lỗi lấy activeUser từ localStorage:', e);
+    }
+    return this.data.config.activeUser || null;
   }
 
-  // Load complete state from MongoDB server (multi-tenant: filter by userId)
-  async fetchDb(userId = null) {
+  setActiveUser(user) {
+    this.data.config.activeUser = user;
     try {
-      if (!userId && this.data.config.activeUser) {
-        userId = this.data.config.activeUser.id;
+      if (user) {
+        localStorage.setItem('no_coffee_active_user', JSON.stringify(user));
+      } else {
+        localStorage.removeItem('no_coffee_active_user');
       }
-      const url = userId ? `/api/db?userId=${encodeURIComponent(userId)}` : '/api/db';
-      const res = await fetch(url);
+    } catch (e) {
+      console.error('Lỗi lưu activeUser vào localStorage:', e);
+    }
+  }
+
+  getHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    const user = this.getActiveUser();
+    if (user && user.id) {
+      headers['x-user-id'] = user.id;
+    }
+    return headers;
+  }
+
+  // Load complete state from MongoDB server
+  async init() {
+    const localUser = this.getActiveUser();
+    if (localUser) {
+      this.data.config.activeUser = localUser;
+      await this.fetchDb();
+    }
+  }
+
+  // Load complete state from MongoDB server
+  async fetchDb() {
+    try {
+      const activeUser = this.getActiveUser();
+      if (!activeUser) return;
+      
+      const res = await fetch('/api/db', {
+        headers: this.getHeaders()
+      });
       if (!res.ok) throw new Error('Không thể kết nối đến máy chủ Database');
       this.data = await res.json();
+      
+      // Preserve active user locally
+      this.data.config.activeUser = activeUser;
       console.log('🍃 Consolidated MongoDB state synced locally!');
     } catch (e) {
       console.error('Lỗi khi tải Database từ máy chủ:', e);
@@ -46,10 +88,12 @@ export class Database {
   // POST reset database
   async resetToDefaults() {
     try {
-      const res = await fetch('/api/db/reset', { method: 'POST' });
+      const res = await fetch('/api/db/reset', {
+        method: 'POST',
+        headers: this.getHeaders()
+      });
       if (res.ok) {
-        const activeUser = this.data.config.activeUser;
-        await this.fetchDb(activeUser ? activeUser.id : null);
+        await this.fetchDb();
         return true;
       }
     } catch (e) {
@@ -61,7 +105,10 @@ export class Database {
   // POST seed 30 days
   async seed30DaysData() {
     try {
-      const res = await fetch('/api/db/seed', { method: 'POST' });
+      const res = await fetch('/api/db/seed', {
+        method: 'POST',
+        headers: this.getHeaders()
+      });
       if (res.ok) {
         await this.fetchDb();
         return true;
@@ -75,17 +122,13 @@ export class Database {
   // POST checkout order
   async processCheckout(orderRecord) {
     try {
-      const activeUser = this.data.config.activeUser;
-      if (activeUser) {
-        orderRecord.ownerId = activeUser.id;
-      }
       const res = await fetch('/api/orders/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ order: orderRecord })
       });
       if (res.ok) {
-        await this.fetchDb(activeUser ? activeUser.id : null);
+        await this.fetchDb();
         return true;
       }
     } catch (e) {
@@ -97,15 +140,67 @@ export class Database {
   // POST restock ingredient
   async restockIngredient(id, qty, customCostPerUnit) {
     try {
-      const activeUser = this.data.config.activeUser;
-      const ownerId = activeUser ? activeUser.id : null;
       const res = await fetch('/api/inventory/restock', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, qty, customCostPerUnit, ownerId })
+        headers: this.getHeaders(),
+        body: JSON.stringify({ id, qty, customCostPerUnit })
       });
       if (res.ok) {
-        await this.fetchDb(ownerId);
+        await this.fetchDb();
+        return true;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return false;
+  }
+
+  // POST add ingredient
+  async addIngredient(name, unit, stock, cost, minStock) {
+    try {
+      const res = await fetch('/api/inventory/add', {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ name, unit, stock, cost, minStock })
+      });
+      if (res.ok) {
+        await this.fetchDb();
+        return true;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return false;
+  }
+
+  // POST update ingredient
+  async updateIngredient(id, name, unit, stock, cost, minStock) {
+    try {
+      const res = await fetch('/api/inventory/update', {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ id, name, unit, stock, cost, minStock })
+      });
+      if (res.ok) {
+        await this.fetchDb();
+        return true;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return false;
+  }
+
+  // POST delete ingredient
+  async deleteIngredient(id) {
+    try {
+      const res = await fetch('/api/inventory/delete', {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ id })
+      });
+      if (res.ok) {
+        await this.fetchDb();
         return true;
       }
     } catch (e) {
@@ -117,17 +212,13 @@ export class Database {
   // POST waste
   async logWaste(wasteRecord) {
     try {
-      const activeUser = this.data.config.activeUser;
-      if (activeUser) {
-        wasteRecord.ownerId = activeUser.id;
-      }
       const res = await fetch('/api/waste', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ wasteRecord })
       });
       if (res.ok) {
-        await this.fetchDb(activeUser ? activeUser.id : null);
+        await this.fetchDb();
         return true;
       }
     } catch (e) {
@@ -139,14 +230,13 @@ export class Database {
   // POST menu update (price, recipe, base64 image)
   async updateMenuItem(id, price, recipe, image) {
     try {
-      const activeUser = this.data.config.activeUser;
       const res = await fetch('/api/menu/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ id, price, recipe, image })
       });
       if (res.ok) {
-        await this.fetchDb(activeUser ? activeUser.id : null);
+        await this.fetchDb();
         return true;
       }
     } catch (e) {
@@ -158,15 +248,13 @@ export class Database {
   // POST add menu item
   async addMenuItem(name, price, category, emoji) {
     try {
-      const activeUser = this.data.config.activeUser;
-      const ownerId = activeUser ? activeUser.id : null;
       const res = await fetch('/api/menu/add', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, price, category, emoji, ownerId })
+        headers: this.getHeaders(),
+        body: JSON.stringify({ name, price, category, emoji })
       });
       if (res.ok) {
-        await this.fetchDb(ownerId);
+        await this.fetchDb();
         return true;
       }
     } catch (e) {
@@ -178,14 +266,13 @@ export class Database {
   // POST delete menu item
   async deleteMenuItem(id) {
     try {
-      const activeUser = this.data.config.activeUser;
       const res = await fetch('/api/menu/delete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ id })
       });
       if (res.ok) {
-        await this.fetchDb(activeUser ? activeUser.id : null);
+        await this.fetchDb();
         return true;
       }
     } catch (e) {
@@ -197,14 +284,13 @@ export class Database {
   // POST attendance Check-in / Check-out
   async logAttendance(attendanceRecord) {
     try {
-      const activeUser = this.data.config.activeUser;
       const res = await fetch('/api/attendance', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ attendanceRecord })
       });
       if (res.ok) {
-        await this.fetchDb(activeUser ? activeUser.id : null);
+        await this.fetchDb();
         return true;
       }
     } catch (e) {
@@ -216,15 +302,13 @@ export class Database {
   // POST Shift assignment updates
   async updateShift(id, employeeId, shiftName, timeRange) {
     try {
-      const activeUser = this.data.config.activeUser;
-      const managerId = activeUser ? activeUser.id : null;
       const res = await fetch('/api/shifts/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, employeeId, shiftName, timeRange, managerId })
+        headers: this.getHeaders(),
+        body: JSON.stringify({ id, employeeId, shiftName, timeRange })
       });
       if (res.ok) {
-        await this.fetchDb(managerId);
+        await this.fetchDb();
         return true;
       }
     } catch (e) {
@@ -233,12 +317,12 @@ export class Database {
     return false;
   }
 
-  // POST Config - chỉ lưu lên server, KHÔNG gọi fetchDb() tránh race condition ghi đè activeUser
+  // POST Config
   async saveConfig(bypassLogin, activeUser) {
     try {
       const res = await fetch('/api/config', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ bypassLogin, activeUser })
       });
       return res.ok;
@@ -253,7 +337,7 @@ export class Database {
     try {
       const res = await fetch('/api/shift-requests/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ employeeId, dayOfWeek, requestType, requestedShiftName, requestedTimeRange, reason })
       });
       if (res.ok) {
@@ -271,7 +355,7 @@ export class Database {
     try {
       const res = await fetch('/api/shift-requests/approve', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ id })
       });
       if (res.ok) {
@@ -289,7 +373,7 @@ export class Database {
     try {
       const res = await fetch('/api/shift-requests/reject', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ id })
       });
       if (res.ok) {
@@ -307,12 +391,11 @@ export class Database {
     try {
       const res = await fetch('/api/users/add', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ name, username, password, managerId })
       });
       if (res.ok) {
         const data = await res.json();
-        // Thêm nhân viên mới vào cache local ngay lập tức
         if (data.success && data.id) {
           if (!this.data.users) this.data.users = [];
           const newEmp = {
@@ -324,7 +407,7 @@ export class Database {
             hourlyWage: 20000,
             salaryCycle: 'weekly',
             salaryStartDate: new Date().toISOString().split('T')[0],
-            password // giữ password trong cache local
+            password
           };
           const exists = this.data.users.find(u => u.id === data.id);
           if (!exists) this.data.users.push(newEmp);
@@ -346,7 +429,7 @@ export class Database {
     try {
       const res = await fetch('/api/users/delete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ id })
       });
       if (res.ok) {
@@ -364,7 +447,7 @@ export class Database {
     try {
       const res = await fetch('/api/users/update-wage-config', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ id, hourlyWage, salaryCycle, salaryStartDate })
       });
       if (res.ok) {
@@ -382,7 +465,7 @@ export class Database {
     try {
       const res = await fetch('/api/users/update-qr', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ id, qrCode })
       });
       if (res.ok) {
@@ -400,7 +483,7 @@ export class Database {
     try {
       const res = await fetch('/api/users/pay-salary', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ employeeId, beforeDate })
       });
       if (res.ok) {
@@ -416,15 +499,13 @@ export class Database {
   // POST add category
   async addCategory(name) {
     try {
-      const activeUser = this.data.config.activeUser;
-      const ownerId = activeUser ? activeUser.id : null;
       const res = await fetch('/api/categories/add', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, ownerId })
+        headers: this.getHeaders(),
+        body: JSON.stringify({ name })
       });
       if (res.ok) {
-        await this.fetchDb(ownerId);
+        await this.fetchDb();
         return true;
       }
     } catch (e) {
@@ -436,14 +517,13 @@ export class Database {
   // POST update category
   async updateCategory(id, name) {
     try {
-      const activeUser = this.data.config.activeUser;
       const res = await fetch('/api/categories/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ id, name })
       });
       if (res.ok) {
-        await this.fetchDb(activeUser ? activeUser.id : null);
+        await this.fetchDb();
         return true;
       }
     } catch (e) {
@@ -455,14 +535,13 @@ export class Database {
   // POST delete category
   async deleteCategory(id) {
     try {
-      const activeUser = this.data.config.activeUser;
       const res = await fetch('/api/categories/delete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ id })
       });
       if (res.ok) {
-        await this.fetchDb(activeUser ? activeUser.id : null);
+        await this.fetchDb();
         return true;
       }
     } catch (e) {
@@ -474,15 +553,13 @@ export class Database {
   // POST create shift
   async createShift(dayOfWeek, shiftName, timeRange) {
     try {
-      const activeUser = this.data.config.activeUser;
-      const ownerId = activeUser ? activeUser.id : null;
       const res = await fetch('/api/shifts/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dayOfWeek, shiftName, timeRange, ownerId })
+        headers: this.getHeaders(),
+        body: JSON.stringify({ dayOfWeek, shiftName, timeRange })
       });
       if (res.ok) {
-        await this.fetchDb(ownerId);
+        await this.fetchDb();
         return true;
       }
     } catch (e) {
@@ -494,74 +571,13 @@ export class Database {
   // POST delete shift
   async deleteShift(id) {
     try {
-      const activeUser = this.data.config.activeUser;
       const res = await fetch('/api/shifts/delete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders(),
         body: JSON.stringify({ id })
       });
       if (res.ok) {
-        await this.fetchDb(activeUser ? activeUser.id : null);
-        return true;
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    return false;
-  }
-
-  // POST add ingredient
-  async addIngredient(name, unit, minStock, initialStock, unitCost) {
-    try {
-      const activeUser = this.data.config.activeUser;
-      const ownerId = activeUser ? activeUser.id : null;
-      const res = await fetch('/api/inventory/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, unit, minStock, initialStock, unitCost, ownerId })
-      });
-      if (res.ok) {
-        await this.fetchDb(ownerId);
-        return true;
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    return false;
-  }
-
-  // POST update ingredient
-  async updateIngredient(id, name, unit, minStock, cost) {
-    try {
-      const activeUser = this.data.config.activeUser;
-      const ownerId = activeUser ? activeUser.id : null;
-      const res = await fetch('/api/inventory/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, name, unit, minStock, cost })
-      });
-      if (res.ok) {
-        await this.fetchDb(ownerId);
-        return true;
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    return false;
-  }
-
-  // POST delete ingredient
-  async deleteIngredient(id) {
-    try {
-      const activeUser = this.data.config.activeUser;
-      const ownerId = activeUser ? activeUser.id : null;
-      const res = await fetch('/api/inventory/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
-      });
-      if (res.ok) {
-        await this.fetchDb(ownerId);
+        await this.fetchDb();
         return true;
       }
     } catch (e) {

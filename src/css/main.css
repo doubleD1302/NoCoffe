@@ -177,7 +177,8 @@ body {
 
 /* Bottom Navigation Bar */
 .app-nav {
-  height: var(--nav-bar-height);
+  min-height: var(--nav-bar-height);
+  height: auto;
   background: var(--surface-glass);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -186,7 +187,8 @@ body {
   justify-content: space-around;
   align-items: center;
   z-index: 100;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-top: 8px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
 }
 
 .app-nav.hidden {
@@ -195,7 +197,7 @@ body {
 
 .nav-tab {
   flex: 1;
-  height: 100%;
+  height: auto;
   border: none;
   background: transparent;
   display: flex;
@@ -206,6 +208,7 @@ body {
   cursor: pointer;
   transition: var(--transition-fast);
   gap: 3px;
+  padding: 4px 0;
 }
 
 .nav-tab:hover {
@@ -238,4 +241,21 @@ body {
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Mobile Screens optimization (safe viewport height) */
+@media (max-width: 480px) {
+  body {
+    height: 100dvh;
+    height: -webkit-fill-available;
+    width: 100vw;
+  }
+  
+  .app-viewport-wrapper {
+    height: 100dvh;
+    height: -webkit-fill-available;
+    max-height: 100dvh;
+    border: none;
+    border-radius: 0;
+  }
 }

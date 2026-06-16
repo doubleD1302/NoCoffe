@@ -30,35 +30,37 @@ export class MainController {
 
   registerViews(views) {
     this.views = views;
-  }  async start() {
-    this.viewManager.showLoading('Đang kết nối cơ sở dữ liệu MongoDB...');
-    let user = this.authModel.getCurrentUser();
+  }
 
-    if (user) {
-      try {
-        await this.db.fetchDb(user.id);
-        // Cập nhật thông tin profile mới nhất nếu có thay đổi từ DB
-        const refreshedUser = this.db.getTable('users').find(u => u.id === user.id);
-        if (refreshedUser) {
-          user = refreshedUser;
-          this.authModel.setCurrentUser(user);
-        }
-        this.viewManager.updateHeader(user);
-        this.viewManager.applyRoleRestrictions(user);
-        this.switchTab(this.activeTab);
-      } catch (e) {
-        console.error(e);
-        this.authModel.setCurrentUser(null);
-        this.viewManager.updateHeader(null);
-        this.viewManager.applyRoleRestrictions(null);
-        this.switchTab('login-view');
-      } finally {
-        this.viewManager.hideLoading();
-      }
-    } else {
+  async start() {
+    this.viewManager.showLoading('Đang kết nối cơ sở dữ liệu MongoDB...');
+    try {
+      await this.db.init(); // Load initial data (no filter yet - just to get config/activeUser)
+    } catch (e) {
+      console.error(e);
+    } finally {
       this.viewManager.hideLoading();
-      this.authModel.setCurrentUser(null);
-      this.viewManager.updateHeader(null);
+    }
+
+    const user = this.authModel.getCurrentUser();
+    this.viewManager.updateHeader(user);
+
+    if (this.authModel.isBypassLogin() && !user) {
+      const devUser = this.db.getTable('users').find(u => u.role === 'dev-admin');
+      this.authModel.setCurrentUser(devUser);
+      this.viewManager.updateHeader(devUser);
+      this.viewManager.applyRoleRestrictions(devUser);
+      this.switchTab('home-view');
+    } else if (user) {
+      // Re-fetch with managerId filter for proper multi-tenant isolation
+      if (user.role === 'manager' || user.role === 'dev-admin') {
+        await this.db.fetchDb(user.id);
+      } else if (user.role === 'employee' && user.managerId) {
+        await this.db.fetchDb(user.managerId);
+      }
+      this.viewManager.applyRoleRestrictions(user);
+      this.switchTab(this.activeTab);
+    } else {
       this.viewManager.applyRoleRestrictions(null);
       this.switchTab('login-view');
     }
@@ -69,27 +71,26 @@ export class MainController {
   // ==========================================================================
   async handleLogin(username, password) {
     this.viewManager.showLoading('Đang đăng nhập...');
-    const result = await this.authModel.login(username, password);
-    this.viewManager.hideLoading();
-
-    if (result.success && result.user) {
-      this.viewManager.showLoading('Đang tải dữ liệu...');
-      try {
-        await this.db.fetchDb(result.user.id);
-      } catch (e) {
-        console.error('Không tải được DB:', e);
-      } finally {
-        this.viewManager.hideLoading();
+    try {
+      const user = await this.authModel.login(username, password);
+      if (user) {
+        this.viewManager.updateHeader(user);
+        this.viewManager.applyRoleRestrictions(user);
+        this.viewManager.showToast(`Chào mừng quay trở lại, ${user.name}!`, 'success');
+        
+        // Fetch database for this user specifically
+        await this.db.fetchDb();
+        
+        this.switchTab('home-view');
+        return true;
       }
-
-      this.viewManager.updateHeader(result.user);
-      this.viewManager.applyRoleRestrictions(result.user);
-      this.viewManager.showToast(`Chào mừng quay trở lại, ${result.user.name}!`, 'success');
-      this.switchTab('home-view');
-      return true;
-    } else {
-      this.viewManager.showToast(result.error || 'Đăng nhập thất bại', 'danger');
       return false;
+    } catch (e) {
+      console.error(e);
+      this.viewManager.showToast('Lỗi kết nối máy chủ', 'danger');
+      return false;
+    } finally {
+      this.viewManager.hideLoading();
     }
   }
 
@@ -102,6 +103,25 @@ export class MainController {
     if (this.viewManager) this.viewManager.hideLoading();
 
     if (result.success) {
+      // Thêm manager mới vào cache local
+      const newUser = {
+        id: result.id || ('usr-' + Date.now().toString().slice(-8)),
+        username: username.trim().toLowerCase(),
+        password,
+        name: name.trim(),
+        role: 'manager',
+        managerId: null,
+        hourlyWage: 25000,
+        salaryCycle: 'weekly',
+        salaryStartDate: new Date().toISOString().split('T')[0]
+      };
+
+      if (!this.db.data.users) this.db.data.users = [];
+      const alreadyExists = this.db.data.users.find(u => u.username === newUser.username);
+      if (!alreadyExists) {
+        this.db.data.users.push(newUser);
+      }
+
       if (this.viewManager) this.viewManager.showToast(`Đăng ký thành công! Chào mừng Quản lý ${name}`, 'success');
 
       // Đăng nhập ngay với tài khoản vừa tạo
@@ -113,6 +133,7 @@ export class MainController {
       return false;
     }
   }
+
 
   logout() {
     this.authModel.logout();
@@ -265,10 +286,10 @@ export class MainController {
     return false;
   }
 
-  async handleAddIngredient(name, unit, minStock, initialStock, unitCost) {
+  async handleAddIngredient(name, unit, stock, cost, minStock) {
     this.viewManager.showLoading('Đang thêm nguyên liệu...');
     try {
-      const success = await this.db.addIngredient(name, unit, minStock, initialStock, unitCost);
+      const success = await this.db.addIngredient(name, unit, stock, cost, minStock);
       if (success) {
         this.viewManager.showToast(`Đã thêm nguyên liệu ${name} thành công!`, 'success');
         return true;
@@ -281,10 +302,10 @@ export class MainController {
     return false;
   }
 
-  async handleUpdateIngredient(id, name, unit, minStock, cost) {
+  async handleUpdateIngredient(id, name, unit, stock, cost, minStock) {
     this.viewManager.showLoading('Đang cập nhật nguyên liệu...');
     try {
-      const success = await this.db.updateIngredient(id, name, unit, minStock, cost);
+      const success = await this.db.updateIngredient(id, name, unit, stock, cost, minStock);
       if (success) {
         this.viewManager.showToast(`Đã cập nhật nguyên liệu ${name} thành công!`, 'success');
         return true;

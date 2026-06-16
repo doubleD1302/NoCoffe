@@ -6,34 +6,21 @@ export class AuthModel {
   }
 
   getCurrentUser() {
-    try {
-      const cached = localStorage.getItem('activeUser');
-      return cached ? JSON.parse(cached) : null;
-    } catch (e) {
-      return null;
-    }
+    return this.db.data.config.activeUser || null;
   }
 
   setCurrentUser(user) {
-    if (user) {
-      localStorage.setItem('activeUser', JSON.stringify(user));
-      if (this.db && this.db.data && this.db.data.config) {
-        this.db.data.config.activeUser = user;
-      }
-    } else {
-      localStorage.removeItem('activeUser');
-      if (this.db && this.db.data && this.db.data.config) {
-        this.db.data.config.activeUser = null;
-      }
-    }
+    this.db.data.config.activeUser = user;
+    this.db.saveConfig(undefined, user); // Fire-and-forget sync config to server
   }
 
   isBypassLogin() {
-    return false; // Luôn yêu cầu đăng nhập thực tế
+    return !!this.db.data.config.bypassLogin;
   }
 
   setBypassLogin(enabled) {
-    // Không hỗ trợ bỏ qua đăng nhập nữa để tăng bảo mật
+    this.db.data.config.bypassLogin = enabled;
+    this.db.saveConfig(enabled, undefined); // Fire-and-forget sync config to server
   }
 
   async login(username, password) {
@@ -43,19 +30,18 @@ export class AuthModel {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
-      const data = await response.json();
       if (!response.ok) {
-        return { error: data.error || 'Đăng nhập thất bại!' };
+        return null;
       }
+      const data = await response.json();
       if (data.success && data.user) {
         this.setCurrentUser(data.user);
-        return { success: true, user: data.user };
+        return data.user;
       }
-      return { error: 'Tên đăng nhập hoặc mật khẩu không chính xác!' };
-    } catch (error) {
-      console.error('Lỗi khi gọi API đăng nhập:', error);
-      return { error: 'Không thể kết nối đến máy chủ' };
+    } catch (e) {
+      console.error('Lỗi khi gọi API login:', e);
     }
+    return null;
   }
 
   logout() {

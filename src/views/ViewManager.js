@@ -83,11 +83,21 @@ export class ViewManager {
     if (!user) {
       this.headerRoleName.innerText = 'Khách';
       this.headerRoleDot.className = 'role-dot';
+      this.devFloatTrigger.classList.add('hidden');
+      this.devRoleSwitcher.classList.add('hidden');
       return;
     }
 
     this.headerRoleName.innerText = user.name;
     this.headerRoleDot.className = `role-dot role-${user.role}`;
+    
+    const isMainAdmin = user.username === '13022005uit';
+    if (isMainAdmin) {
+      this.devFloatTrigger.classList.remove('hidden');
+    } else {
+      this.devFloatTrigger.classList.add('hidden');
+      this.devRoleSwitcher.classList.add('hidden');
+    }
     
     // Highlight correct dev role button if initialized
     this.devRoleSwitcher.querySelectorAll('.btn-dev-role').forEach(btn => {
@@ -104,20 +114,10 @@ export class ViewManager {
   applyRoleRestrictions(user) {
     if (!user) {
       this.navBar.classList.add('hidden');
-      this.devFloatTrigger.classList.add('hidden');
-      this.devRoleSwitcher.classList.add('hidden');
       return;
     }
 
     this.navBar.classList.remove('hidden');
-    
-    // Chỉ hiển thị nút mở công cụ giả lập khi là tài khoản Admin duy nhất
-    if (user.username === '13022005uit' && user.role === 'dev-admin') {
-      this.devFloatTrigger.classList.remove('hidden');
-    } else {
-      this.devFloatTrigger.classList.add('hidden');
-      this.devRoleSwitcher.classList.add('hidden');
-    }
     
     // Check elements visibility based on roles
     const tabs = this.navBar.querySelectorAll('.nav-tab');

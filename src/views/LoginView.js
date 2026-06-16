@@ -12,8 +12,8 @@ export class LoginView {
         <div class="login-card">
           <div class="login-brand">
             <div class="login-logo"><i class="bi bi-ribbon-fill" style="color: var(--primary);"></i></div>
-            <h2>Cà Phê Nơ</h2>
-            <p>Hệ thống quản trị bán hàng & kho</p>
+            <h2>Nơ Coffee</h2>
+            <p>Chiếc app quản lý xe đẩy của Nơ</p>
           </div>
           
           <!-- LOGIN SECTION -->
@@ -21,7 +21,7 @@ export class LoginView {
             <form id="login-form">
               <div class="form-group">
                 <label for="login-username"><i class="bi bi-person-fill"></i> Tên đăng nhập</label>
-                <input type="text" id="login-username" class="input-field" placeholder="staff / manager / admin" required autocomplete="username">
+                <input type="text" id="login-username" class="input-field" placeholder="Tên đăng nhập" required autocomplete="username">
               </div>
               <div class="form-group">
                 <label for="login-password"><i class="bi bi-lock-fill"></i> Mật khẩu</label>
@@ -38,7 +38,6 @@ export class LoginView {
             <div style="text-align: center; margin-top: 16px; font-size: 13px; color: var(--text-muted);">
               Chưa có tài khoản? <a href="#" id="toggle-to-register" style="color: var(--primary); font-weight: 600;">Đăng ký ngay</a>
             </div>
-
           </div>
 
           <!-- REGISTER SECTION -->
@@ -55,13 +54,6 @@ export class LoginView {
               <div class="form-group">
                 <label for="reg-password"><i class="bi bi-lock-fill"></i> Mật khẩu</label>
                 <input type="password" id="reg-password" class="input-field" placeholder="Ít nhất 3 ký tự" required autocomplete="new-password">
-              </div>
-              <div class="form-group">
-                <label for="reg-role"><i class="bi bi-briefcase-fill"></i> Vai trò tài khoản</label>
-                <select id="reg-role" class="select-field" style="height: 42px;">
-                  <option value="employee">👤 Nhân viên phục vụ</option>
-                  <option value="manager">🏢 Quản lý cửa hàng</option>
-                </select>
               </div>
               <div id="register-error" style="display:none; color: var(--danger); font-size: 12px; font-weight: 600; margin-top: 8px; padding: 8px 12px; background: rgba(220,53,69,0.08); border-radius: var(--radius-sm); border-left: 3px solid var(--danger);">
                 <i class="bi bi-exclamation-circle-fill"></i> <span id="register-error-msg"></span>
@@ -105,7 +97,7 @@ export class LoginView {
     });
 
     // Login form submit
-    this.container.querySelector('#login-form').addEventListener('submit', async (e) => {
+    this.container.querySelector('#login-form').addEventListener('submit', (e) => {
       e.preventDefault();
       loginError.style.display = 'none';
       const username = this.container.querySelector('#login-username').value.trim().toLowerCase();
@@ -116,10 +108,11 @@ export class LoginView {
         return;
       }
 
-      const success = await this.controller.handleLogin(username, password);
-      if (!success) {
-        loginError.style.display = 'block';
-      }
+      this.controller.handleLogin(username, password).then(success => {
+        if (!success) {
+          loginError.style.display = 'block';
+        }
+      });
     });
 
     // Register form submit
@@ -130,7 +123,6 @@ export class LoginView {
       const name = this.container.querySelector('#reg-name').value.trim();
       const username = this.container.querySelector('#reg-username').value.trim().toLowerCase();
       const password = this.container.querySelector('#reg-password').value;
-      const role = this.container.querySelector('#reg-role').value;
 
       // Client-side validation
       if (!name || !username || !password) {
@@ -149,9 +141,9 @@ export class LoginView {
         return;
       }
 
-      const success = await this.controller.handleRegister(username, password, name, role);
+      const success = await this.controller.handleRegister(username, password, name, 'manager');
       if (!success) {
-        // Error message is shown by handleRegister via alert or we catch it here
+        // Error is handled inside main controller
       }
     });
   }

@@ -10,12 +10,14 @@ export class InventoryView {
     const user = this.controller.getCurrentUser();
     const isEmployee = user && user.role === 'employee';
 
-    // Restock & Add Action buttons are only visible for Manager/Dev-Admin
+    // Action buttons visible for Manager/Dev-Admin
     const actionButtons = !isEmployee 
-      ? `<div style="display: flex; gap: 8px;">
-          <button class="btn-secondary" id="btn-open-add-ingredient" style="padding: 6px 12px; font-size: 13px;"><i class="bi bi-plus-circle-fill"></i> Thêm nguyên liệu</button>
+      ? `
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-secondary" id="btn-open-add-ing" style="padding: 6px 12px; font-size: 13px;"><i class="bi bi-plus-circle"></i> Thêm mới</button>
           <button class="btn-primary" id="btn-open-restock" style="padding: 6px 12px; font-size: 13px;"><i class="bi bi-box-seam-fill"></i> Nhập kho</button>
-         </div>` 
+        </div>
+      ` 
       : '';
 
     this.container.innerHTML = `
@@ -42,10 +44,35 @@ export class InventoryView {
       });
     }
 
-    const btnAdd = this.container.querySelector('#btn-open-add-ingredient');
-    if (btnAdd) {
-      btnAdd.addEventListener('click', () => {
+    const btnAddIng = this.container.querySelector('#btn-open-add-ing');
+    if (btnAddIng) {
+      btnAddIng.addEventListener('click', () => {
         this.openAddIngredientModal();
+      });
+    }
+
+    // Event delegation for Edit and Delete buttons on cards
+    const mount = this.container.querySelector('#inventory-items-mount');
+    if (mount) {
+      mount.addEventListener('click', (e) => {
+        const btnEdit = e.target.closest('.btn-edit-ing');
+        const btnDelete = e.target.closest('.btn-delete-ing');
+        
+        if (btnEdit) {
+          const ingId = btnEdit.getAttribute('data-id');
+          this.openEditIngredientModal(ingId);
+        }
+        
+        if (btnDelete) {
+          const ingId = btnDelete.getAttribute('data-id');
+          const ingName = this.controller.getInventoryModel().getIngredient(ingId)?.name || '';
+          this.controller.viewManager.showConfirm(`Bạn có chắc chắn muốn xoá nguyên liệu "${ingName}" không?`, async () => {
+            const success = await this.controller.handleDeleteIngredient(ingId);
+            if (success) {
+              this.render();
+            }
+          });
+        }
       });
     }
   }
@@ -56,7 +83,7 @@ export class InventoryView {
     const ingredients = inventory.getIngredients();
 
     if (ingredients.length === 0) {
-      mount.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-muted);"><i class="bi bi-box-seam"></i> Kho trống. Mời bạn thêm nguyên liệu mới.</div>`;
+      mount.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--text-muted);"><i class="bi bi-box-seam"></i> Kho trống.</div>`;
       return;
     }
 
@@ -76,52 +103,36 @@ export class InventoryView {
         ? '' 
         : ` • Giá vốn tb: <strong>${ing.cost.toLocaleString('vi-VN')}đ</strong>/${ing.unit}`;
 
+      // Edit and Delete buttons for Managers/Admins
+      const editButtons = !isEmployee
+        ? `
+          <div class="inventory-item-actions" style="margin-top: 8px; display: flex; gap: 8px; justify-content: flex-end; width: 100%; border-top: 1px dashed var(--border-color); padding-top: 8px;">
+            <button class="btn-secondary btn-edit-ing" data-id="${ing.id}" style="padding: 4px 8px; font-size: 11px; height: auto; display: flex; align-items: center; gap: 4px;"><i class="bi bi-pencil-square"></i> Sửa</button>
+            <button class="btn-danger btn-delete-ing" data-id="${ing.id}" style="padding: 4px 8px; font-size: 11px; height: auto; background: var(--danger); border-color: var(--danger); display: flex; align-items: center; gap: 4px;"><i class="bi bi-trash-fill"></i> Xoá</button>
+          </div>
+        `
+        : '';
+
       return `
-        <div class="inventory-item-card" style="flex-direction: column; align-items: stretch; gap: 8px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-            <div class="inventory-item-details">
-              <h4>${ing.name}</h4>
-              <div class="inventory-item-sub">
+        <div class="inventory-item-card" style="display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--border-color); padding: 12px; border-radius: var(--radius-md); box-shadow: var(--shadow-sm);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
+            <div class="inventory-item-details" style="flex: 1;">
+              <h4 style="font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">${ing.name}</h4>
+              <div class="inventory-item-sub" style="font-size: 11px; color: var(--text-muted);">
                 Mức tối thiểu: ${ing.minStock}${ing.unit}${costInfo}
               </div>
               <div style="margin-top: 6px;">${badgeHtml}</div>
             </div>
-            <div class="inventory-stock-status" style="display: flex; align-items: center; gap: 12px;">
-              <div class="inventory-stock-number" style="color: var(--${status === 'success' ? 'primary-dark' : status}); font-weight: 700;">
+            <div class="inventory-stock-status" style="text-align: right; margin-left: 8px;">
+              <div class="inventory-stock-number" style="color: var(--${status === 'success' ? 'primary-dark' : status}); font-size: 15px; font-weight: 800;">
                 ${ing.stock.toLocaleString('vi-VN')} ${ing.unit}
               </div>
-              ${!isEmployee ? `
-                <div style="display: flex; gap: 4px;">
-                  <button class="btn-secondary btn-edit-ingredient" data-id="${ing.id}" style="padding: 6px 10px; font-size: 11px;"><i class="bi bi-pencil"></i></button>
-                  <button class="btn-danger btn-delete-ingredient" data-id="${ing.id}" style="padding: 6px 8px; font-size: 11px;"><i class="bi bi-trash"></i></button>
-                </div>
-              ` : ''}
             </div>
           </div>
+          ${editButtons}
         </div>
       `;
     }).join('');
-
-    if (!isEmployee) {
-      mount.querySelectorAll('.btn-edit-ingredient').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = btn.getAttribute('data-id');
-          this.openEditIngredientModal(id);
-        });
-      });
-
-      mount.querySelectorAll('.btn-delete-ingredient').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = btn.getAttribute('data-id');
-          this.controller.viewManager.showConfirm('Bạn có chắc chắn muốn xoá nguyên liệu này khỏi kho không? Lựa chọn này có thể ảnh hưởng đến các công thức liên quan.', async () => {
-            const success = await this.controller.handleDeleteIngredient(id);
-            if (success) {
-              this.render();
-            }
-          });
-        });
-      });
-    }
   }
 
   openRestockModal() {
@@ -129,11 +140,6 @@ export class InventoryView {
     const ingredients = inventory.getIngredients();
     const mount = this.container.querySelector('#inventory-modals-mount');
     
-    if (ingredients.length === 0) {
-      this.controller.viewManager.showToast('Vui lòng thêm nguyên liệu mới trước khi nhập kho!', 'warning');
-      return;
-    }
-
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     
@@ -176,7 +182,10 @@ export class InventoryView {
 
     mount.appendChild(overlay);
 
-    const closeModal = () => overlay.remove();
+    const closeModal = () => {
+      overlay.remove();
+    };
+
     overlay.querySelector('.btn-close-modal').addEventListener('click', closeModal);
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) closeModal();
@@ -199,6 +208,7 @@ export class InventoryView {
 
   openAddIngredientModal() {
     const mount = this.container.querySelector('#inventory-modals-mount');
+    
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     
@@ -218,26 +228,26 @@ export class InventoryView {
 
           <div class="form-group">
             <label for="add-ing-unit">Đơn vị tính</label>
-            <input type="text" id="add-ing-unit" class="input-field" required placeholder="Ví dụ: g, ml, cái...">
+            <input type="text" id="add-ing-unit" class="input-field" required placeholder="Ví dụ: g, ml, cái, hộp...">
           </div>
 
           <div class="form-group">
-            <label for="add-ing-min">Mức tối thiểu cảnh báo</label>
-            <input type="number" id="add-ing-min" class="input-field" min="0" step="any" required placeholder="Ví dụ: 1000">
+            <label for="add-ing-stock">Số lượng tồn kho ban đầu</label>
+            <input type="number" id="add-ing-stock" class="input-field" min="0" step="any" required placeholder="Ví dụ: 5000, 3000...">
           </div>
 
           <div class="form-group">
-            <label for="add-ing-stock">Số lượng ban đầu</label>
-            <input type="number" id="add-ing-stock" class="input-field" min="0" step="any" required placeholder="Ví dụ: 5000">
+            <label for="add-ing-cost">Giá vốn trung bình mỗi đơn vị (VND)</label>
+            <input type="number" id="add-ing-cost" class="input-field" min="0" required placeholder="Ví dụ: 150, 60...">
           </div>
 
           <div class="form-group">
-            <label for="add-ing-cost">Giá vốn mua mỗi đơn vị (VND)</label>
-            <input type="number" id="add-ing-cost" class="input-field" min="0" required placeholder="Ví dụ: 150">
+            <label for="add-ing-min">Mức cảnh báo tồn kho tối thiểu</label>
+            <input type="number" id="add-ing-min" class="input-field" min="0" step="any" required placeholder="Ví dụ: 2000, 1000...">
           </div>
 
           <button type="submit" class="btn-primary" style="width: 100%; height: 44px; margin-top: 10px;">
-            <i class="bi bi-check-lg"></i> Xác Nhận Thêm
+            <i class="bi bi-plus-circle-fill"></i> Thêm Nguyên Liệu
           </button>
         </form>
       </div>
@@ -245,7 +255,10 @@ export class InventoryView {
 
     mount.appendChild(overlay);
 
-    const closeModal = () => overlay.remove();
+    const closeModal = () => {
+      overlay.remove();
+    };
+
     overlay.querySelector('.btn-close-modal').addEventListener('click', closeModal);
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) closeModal();
@@ -255,11 +268,11 @@ export class InventoryView {
       e.preventDefault();
       const name = overlay.querySelector('#add-ing-name').value.trim();
       const unit = overlay.querySelector('#add-ing-unit').value.trim();
+      const stock = Number(overlay.querySelector('#add-ing-stock').value);
+      const cost = Number(overlay.querySelector('#add-ing-cost').value);
       const minStock = Number(overlay.querySelector('#add-ing-min').value);
-      const initialStock = Number(overlay.querySelector('#add-ing-stock').value);
-      const unitCost = Number(overlay.querySelector('#add-ing-cost').value);
 
-      const success = await this.controller.handleAddIngredient(name, unit, minStock, initialStock, unitCost);
+      const success = await this.controller.handleAddIngredient(name, unit, stock, cost, minStock);
       if (success) {
         this.render();
         closeModal();
@@ -267,9 +280,9 @@ export class InventoryView {
     });
   }
 
-  openEditIngredientModal(id) {
+  openEditIngredientModal(ingId) {
     const inventory = this.controller.getInventoryModel();
-    const ing = inventory.getIngredient(id);
+    const ing = inventory.getIngredient(ingId);
     if (!ing) return;
 
     const mount = this.container.querySelector('#inventory-modals-mount');
@@ -296,17 +309,22 @@ export class InventoryView {
           </div>
 
           <div class="form-group">
-            <label for="edit-ing-min">Mức tối thiểu cảnh báo</label>
-            <input type="number" id="edit-ing-min" class="input-field" min="0" step="any" required value="${ing.minStock}">
+            <label for="edit-ing-stock">Số lượng tồn kho</label>
+            <input type="number" id="edit-ing-stock" class="input-field" min="0" step="any" required value="${ing.stock}">
           </div>
 
           <div class="form-group">
-            <label for="edit-ing-cost">Giá vốn mua mỗi đơn vị (VND)</label>
+            <label for="edit-ing-cost">Giá vốn trung bình mỗi đơn vị (VND)</label>
             <input type="number" id="edit-ing-cost" class="input-field" min="0" required value="${ing.cost}">
           </div>
 
+          <div class="form-group">
+            <label for="edit-ing-min">Mức cảnh báo tồn kho tối thiểu</label>
+            <input type="number" id="edit-ing-min" class="input-field" min="0" step="any" required value="${ing.minStock}">
+          </div>
+
           <button type="submit" class="btn-primary" style="width: 100%; height: 44px; margin-top: 10px;">
-            <i class="bi bi-save-fill"></i> Lưu Thay Đổi
+            <i class="bi bi-check-circle-fill"></i> Lưu Thay Đổi
           </button>
         </form>
       </div>
@@ -314,7 +332,10 @@ export class InventoryView {
 
     mount.appendChild(overlay);
 
-    const closeModal = () => overlay.remove();
+    const closeModal = () => {
+      overlay.remove();
+    };
+
     overlay.querySelector('.btn-close-modal').addEventListener('click', closeModal);
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) closeModal();
@@ -324,10 +345,11 @@ export class InventoryView {
       e.preventDefault();
       const name = overlay.querySelector('#edit-ing-name').value.trim();
       const unit = overlay.querySelector('#edit-ing-unit').value.trim();
-      const minStock = Number(overlay.querySelector('#edit-ing-min').value);
+      const stock = Number(overlay.querySelector('#edit-ing-stock').value);
       const cost = Number(overlay.querySelector('#edit-ing-cost').value);
+      const minStock = Number(overlay.querySelector('#edit-ing-min').value);
 
-      const success = await this.controller.handleUpdateIngredient(id, name, unit, minStock, cost);
+      const success = await this.controller.handleUpdateIngredient(ingId, name, unit, stock, cost, minStock);
       if (success) {
         this.render();
         closeModal();
