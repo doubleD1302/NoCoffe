@@ -1,0 +1,60 @@
+/* design tokens for Nơ Coffee - Vibe Chill Coffee Theme */
+:root {
+  /* Warm Roasted Coffee Palette */
+  --primary-hue: 28;
+  --primary: hsl(var(--primary-hue), 48%, 30%);        /* #703c1b - Warm Espresso */
+  --primary-light: hsl(var(--primary-hue), 40%, 46%);  /* #9c603b - Creamy Latte */
+  --primary-dark: hsl(var(--primary-hue), 52%, 20%);   /* #4c260f - Dark Roast */
+  --primary-soft: hsl(var(--primary-hue), 45%, 96%);   /* #fbf8f5 - Sweet Cream */
+  
+  --accent: hsl(38, 55%, 52%);                         /* #cf963f - Amber Honey */
+  --accent-light: hsl(38, 45%, 85%);                   /* #f0dec3 - Sand */
+  --accent-dark: hsl(38, 60%, 38%);                    /* #996924 - Toasted Caramel */
+  
+  /* Status Colors */
+  --success: hsl(142, 55%, 42%);                       /* Matcha green */
+  --success-soft: hsl(142, 40%, 94%);
+  --warning: hsl(42, 90%, 46%);                        /* Honey Gold */
+  --warning-soft: hsl(42, 75%, 94%);
+  --danger: hsl(12, 65%, 48%);                         /* Coffee Cherry Red */
+  --danger-soft: hsl(12, 55%, 95%);
+  
+  /* Cozy Backgrounds */
+  --bg-frame: #18110a;                                  /* Rich dark espresso wood frame */
+  --bg-app: hsl(var(--primary-hue), 35%, 98%);         /* Soft milk coffee bg */
+  
+  /* UI Surfaces & Glassmorphism */
+  --surface: #ffffff;
+  --surface-glass: rgba(255, 255, 255, 0.88);
+  --border-color: rgba(112, 60, 27, 0.1);
+  --border-focus: var(--primary-light);
+  
+  /* Text Colors */
+  --text-main: hsl(var(--primary-hue), 55%, 11%);      /* #1c0f06 - Dark Coffee Grounds */
+  --text-muted: hsl(var(--primary-hue), 25%, 42%);     /* #8c6a53 - Milk Coffee */
+  --text-light: hsl(var(--primary-hue), 15%, 65%);     /* #bbb0a7 - Warm Sand */
+  --text-on-primary: #ffffff;
+  
+  /* Fonts */
+  --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  
+  /* Layout Sizing */
+  --header-height: 60px;
+  --nav-bar-height: 65px;
+  --max-mobile-width: 480px;
+  
+  /* Borders & Shadows */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+  
+  --shadow-sm: 0 3px 8px rgba(112, 60, 27, 0.03);
+  --shadow-md: 0 10px 24px rgba(112, 60, 27, 0.06);
+  --shadow-lg: 0 20px 48px rgba(112, 60, 27, 0.1);
+  
+  --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --glass-blur: blur(16px);
+}

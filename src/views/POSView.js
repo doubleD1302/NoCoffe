@@ -1,0 +1,520 @@
+// POSView.js - Renders Point of Sale Cashier system using Bootstrap Icons & Base64 Images
+
+export class POSView {
+  constructor(container, controller) {
+    this.container = container;
+    this.controller = controller;
+    this.activeCategory = 'all';
+  }
+
+  render() {
+    this.container.innerHTML = `
+      <div class="pos-layout">
+        <!-- Category Selector -->
+        <div class="category-tabs" id="pos-category-tabs">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <!-- Drink Grid -->
+        <div class="menu-grid" id="pos-menu-grid"></div>
+
+        <!-- Floating Cart Trigger Pill -->
+        <div class="floating-cart-trigger hidden" id="pos-cart-trigger">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="cart-count-badge" id="pos-cart-count">0</div>
+            <span style="font-size: 13px; font-weight: 500;"><i class="bi bi-cart3"></i> Xem giỏ hàng</span>
+          </div>
+          <div class="cart-price-total" id="pos-cart-total">0đ</div>
+        </div>
+      </div>
+      
+      <!-- Modals Layer (Rendered dynamically) -->
+      <div id="pos-modals-mount"></div>
+    `;
+
+    this.renderCategoryTabs();
+    this.renderMenuGrid();
+    this.initCoreEvents();
+    this.updateCartTrigger();
+  }
+
+  renderCategoryTabs() {
+    const tabsContainer = this.container.querySelector('#pos-category-tabs');
+    if (!tabsContainer) return;
+
+    const categories = this.controller.db.getTable('categories');
+
+    const getIconClass = (catId) => {
+      if (catId === 'cf') return 'bi-cup-hot-fill';
+      if (catId === 'tra') return 'bi-leaf-fill';
+      if (catId === 'milktea') return 'bi-funnel-fill';
+      return 'bi-tag-fill';
+    };
+
+    const buttons = [
+      `<button class="category-tab ${this.activeCategory === 'all' ? 'active' : ''}" data-category="all"><i class="bi bi-grid-fill"></i> Tất cả</button>`,
+      ...categories.map(cat => `
+        <button class="category-tab ${this.activeCategory === cat.id ? 'active' : ''}" data-category="${cat.id}">
+          <i class="bi ${getIconClass(cat.id)}"></i> ${cat.name}
+        </button>
+      `)
+    ];
+
+    tabsContainer.innerHTML = buttons.join('');
+
+    // Wire events
+    tabsContainer.querySelectorAll('.category-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabsContainer.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        this.activeCategory = tab.getAttribute('data-category');
+        this.renderMenuGrid();
+      });
+    });
+  }
+
+  initCoreEvents() {
+    const trigger = this.container.querySelector('#pos-cart-trigger');
+    trigger.addEventListener('click', () => {
+      this.openCartModal();
+    });
+  }
+
+  renderMenuGrid() {
+    const grid = this.container.querySelector('#pos-menu-grid');
+    const menu = this.controller.getMenu();
+    const inventory = this.controller.getInventoryModel();
+    
+    const filtered = menu.filter(item => 
+      this.activeCategory === 'all' || item.category === this.activeCategory
+    );
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px 0;">Không có món nào.</div>`;
+      return;
+    }
+
+    grid.innerHTML = filtered.map(item => {
+      // Check for low stock warnings
+      let hasLowStock = false;
+      if (item.recipe) {
+        // Handle MongoDB Map/Object conversions safely
+        const recipeObj = typeof item.recipe.entries === 'function' ? Object.fromEntries(item.recipe) : item.recipe;
+        Object.keys(recipeObj).forEach(ingId => {
+          const ing = inventory.getIngredient(ingId);
+          if (ing && ing.stock <= ing.minStock) {
+            hasLowStock = true;
+          }
+        });
+      }
+
+      const warningBadge = hasLowStock 
+        ? `<div class="menu-card-warning" title="Nguyên liệu sắp hết"><i class="bi bi-exclamation-triangle-fill"></i></div>` 
+        : '';
+
+      // Check if image exists, otherwise draw emoji
+      const thumbnailHtml = item.image 
+        ? `<img src="${item.image}" style="width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-sm);" alt="${item.name}">`
+        : `<span style="font-size: 38px;">${item.emoji}</span>`;
+
+      return `
+        <div class="menu-card" data-id="${item.id}">
+          ${warningBadge}
+          <div class="menu-card-thumbnail">${thumbnailHtml}</div>
+          <div class="menu-card-info">
+            <span class="menu-card-name">${item.name}</span>
+            <span class="menu-card-price">${item.price.toLocaleString('vi-VN')}đ</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    grid.querySelectorAll('.menu-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const id = card.getAttribute('data-id');
+        this.openModifierModal(id);
+      });
+    });
+  }
+
+  updateCartTrigger() {
+    const trigger = this.container.querySelector('#pos-cart-trigger');
+    const countBadge = this.container.querySelector('#pos-cart-count');
+    const totalLabel = this.container.querySelector('#pos-cart-total');
+
+    const totalCount = this.controller.getCartCount();
+    const totalPrice = this.controller.getCartTotal();
+
+    if (totalCount > 0) {
+      trigger.classList.remove('hidden');
+      countBadge.innerText = totalCount;
+      totalLabel.innerText = totalPrice.toLocaleString('vi-VN') + 'đ';
+    } else {
+      trigger.classList.add('hidden');
+    }
+  }
+
+  openModifierModal(drinkId) {
+    const drink = this.controller.getMenuById(drinkId);
+    if (!drink) return;
+
+    const mount = this.container.querySelector('#pos-modals-mount');
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal-content">
+        <div class="drawer-handle"></div>
+        <div class="modal-header">
+          <h3>Cấu hình: ${drink.name}</h3>
+          <button class="btn-icon-small btn-close-modal">×</button>
+        </div>
+        
+        <div class="option-section">
+          <div class="option-title">Kích thước (Size)</div>
+          <div class="option-pills" id="modifier-size">
+            <button class="option-pill-btn active" data-val="M">Size M (Mặc định)</button>
+            <button class="option-pill-btn" data-val="L">Size L (+5,000đ)</button>
+          </div>
+        </div>
+
+        <div class="option-section">
+          <div class="option-title">Độ ngọt (Đường)</div>
+          <div class="option-pills" id="modifier-sugar">
+            <button class="option-pill-btn active" data-val="100%">100% đường</button>
+            <button class="option-pill-btn" data-val="70%">70% đường</button>
+            <button class="option-pill-btn" data-val="50%">50% đường</button>
+            <button class="option-pill-btn" data-val="0%">Không đường</button>
+          </div>
+        </div>
+
+        <div class="option-section">
+          <div class="option-title">Độ lạnh (Đá)</div>
+          <div class="option-pills" id="modifier-ice">
+            <button class="option-pill-btn active" data-val="100%">100% đá</button>
+            <button class="option-pill-btn" data-val="70%">70% đá</button>
+            <button class="option-pill-btn" data-val="50%">50% đá</button>
+            <button class="option-pill-btn" data-val="0%">Không đá</button>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 10px;">
+          <label for="modifier-notes"><i class="bi bi-pencil-square"></i> Ghi chú đặc biệt</label>
+          <input type="text" id="modifier-notes" class="input-field" placeholder="Ví dụ: Ít sữa, nhiều đá, v.v.">
+        </div>
+
+        <button class="btn-primary" id="btn-add-to-cart-confirm" style="width: 100%; height: 44px; margin-top: 10px;">
+          <i class="bi bi-plus-lg"></i> Thêm Vào Giỏ Hàng
+        </button>
+      </div>
+    `;
+
+    mount.appendChild(overlay);
+
+    const setupPills = (containerId) => {
+      const pContainer = overlay.querySelector('#' + containerId);
+      pContainer.querySelectorAll('.option-pill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          pContainer.querySelectorAll('.option-pill-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        });
+      });
+    };
+
+    setupPills('modifier-size');
+    setupPills('modifier-sugar');
+    setupPills('modifier-ice');
+
+    const closeModal = () => {
+      overlay.style.opacity = '0';
+      overlay.querySelector('.modal-content').style.transform = 'translateY(100%)';
+      overlay.querySelector('.modal-content').style.transition = 'all 0.25s ease';
+      setTimeout(() => overlay.remove(), 250);
+    };
+
+    overlay.querySelector('.btn-close-modal').addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeModal();
+    });
+
+    overlay.querySelector('#btn-add-to-cart-confirm').addEventListener('click', () => {
+      const size = overlay.querySelector('#modifier-size .active').getAttribute('data-val');
+      const sugar = overlay.querySelector('#modifier-sugar .active').getAttribute('data-val');
+      const ice = overlay.querySelector('#modifier-ice .active').getAttribute('data-val');
+      const notes = overlay.querySelector('#modifier-notes').value.trim();
+
+      this.controller.addToCart(drink, size, sugar, ice, notes);
+      this.updateCartTrigger();
+      closeModal();
+    });
+  }
+
+  openCartModal() {
+    const cart = this.controller.getCart();
+    if (cart.length === 0) return;
+
+    const mount = this.container.querySelector('#pos-modals-mount');
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    
+    const itemsHtml = cart.map((item, index) => {
+      const descDetails = `Size ${item.size} • Đường ${item.sugar} • Đá ${item.ice}${item.notes ? ` • ${item.notes}` : ''}`;
+      return `
+        <div class="cart-item-row">
+          <div class="cart-item-desc">
+            <div class="cart-item-name">${item.name}</div>
+            <div class="cart-item-details">${descDetails}</div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--accent-dark); margin-top: 2px;">
+              ${(item.price * item.qty).toLocaleString('vi-VN')}đ
+            </div>
+          </div>
+          <div class="cart-item-controls">
+            <button class="cart-qty-btn btn-qty-minus" data-index="${index}"><i class="bi bi-dash"></i></button>
+            <span class="cart-item-qty">${item.qty}</span>
+            <button class="cart-qty-btn btn-qty-plus" data-index="${index}"><i class="bi bi-plus"></i></button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    overlay.innerHTML = `
+      <div class="modal-content" style="max-height: 90%;">
+        <div class="drawer-handle"></div>
+        <div class="modal-header">
+          <h3>Giỏ hàng của bạn</h3>
+          <button class="btn-icon-small btn-close-modal">×</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px; overflow-y: auto; max-height: 300px; padding-right: 4px;">
+          ${itemsHtml}
+        </div>
+
+        <div style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+          <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 16px; margin-bottom: 20px; color: var(--primary-dark);">
+            <span>Tổng cộng:</span>
+            <span>${this.controller.getCartTotal().toLocaleString('vi-VN')}đ</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 8px;">
+            <button class="btn-secondary" id="btn-clear-cart" style="height: 48px;"><i class="bi bi-trash"></i> Xoá sạch</button>
+            <button class="btn-primary" id="btn-go-to-checkout" style="height: 48px;">Thanh Toán <i class="bi bi-arrow-right-short"></i></button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    mount.appendChild(overlay);
+
+    const closeModal = () => {
+      overlay.style.opacity = '0';
+      overlay.querySelector('.modal-content').style.transform = 'translateY(100%)';
+      overlay.querySelector('.modal-content').style.transition = 'all 0.25s ease';
+      setTimeout(() => overlay.remove(), 250);
+    };
+
+    overlay.querySelector('.btn-close-modal').addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeModal();
+    });
+
+    overlay.querySelectorAll('.btn-qty-minus').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const index = Number(btn.getAttribute('data-index'));
+        this.controller.updateCartQty(index, -1);
+        this.updateCartTrigger();
+        closeModal();
+        if (this.controller.getCartCount() > 0) {
+          this.openCartModal();
+        }
+      });
+    });
+
+    overlay.querySelectorAll('.btn-qty-plus').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const index = Number(btn.getAttribute('data-index'));
+        this.controller.updateCartQty(index, 1);
+        this.updateCartTrigger();
+        closeModal();
+        this.openCartModal();
+      });
+    });
+
+    overlay.querySelector('#btn-clear-cart').addEventListener('click', () => {
+      this.controller.viewManager.showConfirm('Bạn muốn xoá sạch giỏ hàng hiện tại?', () => {
+        this.controller.clearCart();
+        this.updateCartTrigger();
+        closeModal();
+      });
+    });
+
+    overlay.querySelector('#btn-go-to-checkout').addEventListener('click', () => {
+      closeModal();
+      this.openCheckoutModal();
+    });
+  }
+
+  openCheckoutModal() {
+    const total = this.controller.getCartTotal();
+    const mount = this.container.querySelector('#pos-modals-mount');
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    
+    overlay.innerHTML = `
+      <div class="modal-content" style="max-height: 95%;">
+        <div class="drawer-handle"></div>
+        <div class="modal-header">
+          <h3>Thanh Toán</h3>
+          <button class="btn-icon-small btn-close-modal">×</button>
+        </div>
+
+        <div class="option-section">
+          <div class="option-title">Phương thức thanh toán</div>
+          <div class="option-pills" id="checkout-method">
+            <button class="option-pill-btn active" data-val="Tiền mặt"><i class="bi bi-cash"></i> Tiền mặt</button>
+            <button class="option-pill-btn" data-val="Chuyển khoản QR"><i class="bi bi-qr-code-scan"></i> Chuyển khoản QR</button>
+            <button class="option-pill-btn" data-val="Thẻ"><i class="bi bi-credit-card"></i> Thẻ</button>
+          </div>
+        </div>
+
+        <!-- Cash panel -->
+        <div id="checkout-cash-panel" class="payment-method-panel">
+          <div class="form-group">
+            <label for="cash-received">Tiền mặt khách đưa (VND)</label>
+            <input type="number" id="cash-received" class="input-field" value="${total}" step="5000" min="${total}">
+          </div>
+          
+          <div class="option-pills" style="margin-bottom: 16px;">
+            <button class="option-pill-btn btn-quick-cash" data-val="${total}">Đủ (${total.toLocaleString('vi-VN')}đ)</button>
+            <button class="option-pill-btn btn-quick-cash" data-val="${Math.ceil(total/10000)*10000}">Chẵn chục</button>
+            <button class="option-pill-btn btn-quick-cash" data-val="${Math.ceil(total/50000)*50000}">Chẵn 50k</button>
+            <button class="option-pill-btn btn-quick-cash" data-val="100000">100.000đ</button>
+            <button class="option-pill-btn btn-quick-cash" data-val="200000">200.000đ</button>
+            <button class="option-pill-btn btn-quick-cash" data-val="500000">500.000đ</button>
+          </div>
+
+          <div style="background: var(--primary-soft); padding: 12px; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--border-color); margin-bottom: 20px;">
+            <span style="font-size: 12px; font-weight: 600; color: var(--text-muted);">TIỀN THỐI LẠI</span>
+            <div id="cash-change-val" style="font-size: 22px; font-weight: 800; color: var(--success); margin-top: 2px;">0đ</div>
+          </div>
+        </div>
+
+        <!-- QR panel -->
+        <div id="checkout-qr-panel" class="payment-method-panel hidden">
+          <div class="qr-modal-body">
+            <div class="qr-canvas-mock" id="checkout-qr-canvas">
+              <svg width="100%" height="100%" viewBox="0 0 100 100">
+                <rect x="0" y="0" width="100" height="100" fill="none" stroke="#ccc" stroke-width="0.5"/>
+                <rect x="5" y="5" width="20" height="20" fill="none" stroke="var(--primary)" stroke-width="4"/>
+                <rect x="10" y="10" width="10" height="10" fill="var(--primary)"/>
+                <rect x="75" y="5" width="20" height="20" fill="none" stroke="var(--primary)" stroke-width="4"/>
+                <rect x="80" y="10" width="10" height="10" fill="var(--primary)"/>
+                <rect x="5" y="75" width="20" height="20" fill="none" stroke="var(--primary)" stroke-width="4"/>
+                <rect x="10" y="80" width="10" height="10" fill="var(--primary)"/>
+                <rect x="35" y="15" width="8" height="8" fill="#555"/>
+                <rect x="50" y="25" width="12" height="6" fill="#333"/>
+                <rect x="30" y="45" width="6" height="12" fill="#444"/>
+                <rect x="60" y="45" width="14" height="14" fill="#333"/>
+                <rect x="40" y="65" width="10" height="10" fill="#222"/>
+                <rect x="65" y="75" width="8" height="10" fill="#444"/>
+                <rect x="45" y="40" width="10" height="8" fill="#555"/>
+              </svg>
+              <div class="qr-bezel-no"><i class="bi bi-ribbon-fill" style="color: var(--primary);"></i></div>
+            </div>
+            
+            <div style="font-size: 11px; color: var(--text-muted); line-height: 1.5;">
+              <strong>VietinBank - 1028374829 - Tiệm Cà Phê Nơ</strong><br>
+              Số tiền: <strong style="color: var(--primary);">${total.toLocaleString('vi-VN')}đ</strong><br>
+              Nội dung: <strong>Thanh toan don hang No</strong>
+            </div>
+            <div class="badge badge-success"><i class="bi bi-patch-check-fill"></i> Đã đồng bộ số dư ngân hàng</div>
+          </div>
+        </div>
+
+        <!-- Card panel -->
+        <div id="checkout-card-panel" class="payment-method-panel hidden" style="text-align: center; padding: 20px 0;">
+          <div style="font-size: 44px; margin-bottom: 12px;"><i class="bi bi-device-ssd"></i></div>
+          <p style="font-size: 13px; color: var(--text-muted); font-weight: 500;">
+            Hãy quẹt thẻ hoặc chạm thẻ lên thiết bị POS...
+          </p>
+        </div>
+
+        <button class="btn-primary" id="btn-complete-order" style="width: 100%; height: 48px; margin-top: 10px;">
+          <i class="bi bi-check2-all"></i> Hoàn Thành & Lưu Đơn (In Bill)
+        </button>
+      </div>
+    `;
+
+    mount.appendChild(overlay);
+
+    const closeModal = () => {
+      overlay.style.opacity = '0';
+      overlay.querySelector('.modal-content').style.transform = 'translateY(100%)';
+      overlay.querySelector('.modal-content').style.transition = 'all 0.25s ease';
+      setTimeout(() => overlay.remove(), 250);
+    };
+
+    overlay.querySelector('.btn-close-modal').addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeModal();
+    });
+
+    const cashPanel = overlay.querySelector('#checkout-cash-panel');
+    const qrPanel = overlay.querySelector('#checkout-qr-panel');
+    const cardPanel = overlay.querySelector('#checkout-card-panel');
+    const inputCash = overlay.querySelector('#cash-received');
+    const changeVal = overlay.querySelector('#cash-change-val');
+
+    const calculateChange = () => {
+      const received = Number(inputCash.value) || 0;
+      const change = Math.max(0, received - total);
+      changeVal.innerText = change.toLocaleString('vi-VN') + 'đ';
+    };
+
+    calculateChange();
+    inputCash.addEventListener('input', calculateChange);
+
+    overlay.querySelectorAll('.btn-quick-cash').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = Number(btn.getAttribute('data-val'));
+        inputCash.value = val;
+        calculateChange();
+      });
+    });
+
+    let activeMethod = 'Tiền mặt';
+    const methodPills = overlay.querySelector('#checkout-method');
+    
+    methodPills.querySelectorAll('.option-pill-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        methodPills.querySelectorAll('.option-pill-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        activeMethod = btn.getAttribute('data-val');
+        
+        cashPanel.classList.add('hidden');
+        qrPanel.classList.add('hidden');
+        cardPanel.classList.add('hidden');
+
+        if (activeMethod === 'Tiền mặt') {
+          cashPanel.classList.remove('hidden');
+        } else if (activeMethod === 'Chuyển khoản QR') {
+          qrPanel.classList.remove('hidden');
+        } else if (activeMethod === 'Thẻ') {
+          cardPanel.classList.remove('hidden');
+        }
+      });
+    });
+
+    overlay.querySelector('#btn-complete-order').addEventListener('click', async () => {
+      const cashVal = Number(inputCash.value) || total;
+      
+      if (activeMethod === 'Tiền mặt' && cashVal < total) {
+        this.controller.viewManager.showToast('Khách đưa thiếu tiền mặt!', 'danger');
+        return;
+      }
+
+      closeModal();
+      await this.controller.processCheckout(activeMethod, cashVal);
+      this.updateCartTrigger();
+    });
+  }
+}

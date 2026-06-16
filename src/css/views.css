@@ -1,0 +1,689 @@
+/* View-Specific Layouts & Configurations - Vibe Chill Coffee */
+
+/* ==========================================================================
+   Login View
+   ========================================================================== */
+.login-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 340px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 32px 24px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+}
+
+.login-brand {
+  margin-bottom: 24px;
+}
+
+.login-logo {
+  font-size: 40px;
+  margin-bottom: 8px;
+}
+
+.login-brand h2 {
+  font-family: var(--font-heading);
+  font-size: 24px;
+  color: var(--primary-dark);
+}
+
+.login-brand p {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Home View (Trang Chủ)
+   ========================================================================== */
+.home-employee-layout,
+.home-manager-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.schedule-row {
+  transition: var(--transition-fast);
+}
+
+.schedule-row:hover {
+  background: var(--primary-soft);
+}
+
+/* Shift Scheduler Cell Buttons */
+.btn-cell-shift {
+  width: 100%;
+  max-width: 54px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  transition: var(--transition-fast);
+}
+
+.btn-cell-shift:active {
+  transform: scale(0.92);
+}
+
+.shift-cell-morning {
+  background-color: var(--accent-light);
+  color: var(--accent-dark);
+  border-color: var(--accent);
+}
+
+.shift-cell-afternoon {
+  background: hsl(var(--primary-hue), 35%, 88%);
+  color: var(--primary);
+  border-color: var(--primary-light);
+}
+
+.shift-cell-off {
+  background-color: var(--bg-app);
+  color: var(--text-light);
+  border-color: var(--border-color);
+}
+
+/* ==========================================================================
+   POS View (Point of Sale)
+   ========================================================================== */
+.pos-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.category-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  scrollbar-width: none;
+}
+
+.category-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.category-tab {
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  white-space: nowrap;
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.category-tab.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* Drink Grid */
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+  padding-bottom: 80px;
+}
+
+.menu-card {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.menu-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-light);
+}
+
+.menu-card-thumbnail {
+  height: 100px;
+  background: var(--primary-soft);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.menu-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menu-card-name {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-card-price {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-dark);
+}
+
+.menu-card-warning {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  box-shadow: var(--shadow-sm);
+  z-index: 10;
+}
+
+/* Floating Cart Trigger Pill */
+.floating-cart-trigger {
+  position: absolute;
+  bottom: 80px;
+  left: 16px;
+  right: 16px;
+  height: 54px;
+  background: var(--primary-dark);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  color: white;
+  z-index: 500;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.floating-cart-trigger.hidden {
+  transform: translateY(100px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cart-count-badge {
+  background: var(--accent);
+  color: var(--text-on-primary);
+  font-size: 12px;
+  font-weight: 800;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cart-price-total {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+/* Modifier Modal Options */
+.option-section {
+  margin-bottom: 16px;
+}
+
+.option-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.option-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.option-pill-btn {
+  border: 1px solid var(--border-color);
+  background: var(--bg-app);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.option-pill-btn.active {
+  background: var(--primary-soft);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Cart Item Row */
+.cart-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.cart-item-desc {
+  flex: 1;
+}
+
+.cart-item-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.cart-item-details {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.cart-item-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cart-qty-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 16px;
+}
+
+.cart-item-qty {
+  font-size: 14px;
+  font-weight: 700;
+  width: 20px;
+  text-align: center;
+}
+
+/* Checkout QR Modal details */
+.qr-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+}
+
+.qr-canvas-mock {
+  width: 180px;
+  height: 180px;
+  border: 4px solid var(--primary-soft);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.qr-bezel-no {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ==========================================================================
+   Inventory View
+   ========================================================================== */
+.view-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.view-title-row h2 {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--primary-dark);
+}
+
+.inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.inventory-item-card {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.inventory-item-details h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.inventory-item-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.inventory-stock-status {
+  text-align: right;
+}
+
+.inventory-stock-number {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--primary-dark);
+}
+
+/* ==========================================================================
+   Statistics View
+   ========================================================================== */
+.stats-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.stat-metric-card {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-card-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-card-val {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--primary-dark);
+  margin-top: 4px;
+}
+
+.stat-card-sub {
+  font-size: 9px;
+  color: var(--text-light);
+}
+
+.chart-section {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.chart-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.svg-chart-container {
+  width: 100%;
+  height: 150px;
+}
+
+.svg-chart {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leaderboard-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.leaderboard-rank {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--primary-light);
+  width: 16px;
+}
+
+.leaderboard-progress-bar {
+  flex: 1;
+  height: 8px;
+  background-color: var(--primary-soft);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.leaderboard-progress-fill {
+  height: 100%;
+  background-color: var(--primary-light);
+  border-radius: 4px;
+}
+
+.leaderboard-name {
+  font-size: 12px;
+  font-weight: 600;
+  width: 90px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leaderboard-sales {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--text-main);
+  text-align: right;
+  width: 50px;
+}
+
+/* ==========================================================================
+   Waste & Log View
+   ========================================================================== */
+.waste-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.waste-log-card {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.waste-log-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.waste-log-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.waste-log-cost {
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--danger);
+  text-align: right;
+}
+
+/* ==========================================================================
+   Recipe Configuration Editor (Menu View)
+   ========================================================================== */
+.menu-config-item {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.recipe-ingredient-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 80px 30px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+/* ==========================================================================
+   Bổ sung: Giao diện & Hiệu ứng chuyển đổi Đăng Nhập / Đăng Ký
+   ========================================================================== */
+
+/* Hiệu ứng mượt mà (Fade In) khi bấm chuyển đổi giữa 2 form */
+#login-section,
+#register-section {
+  animation: loginFadeIn 0.4s ease-out forwards;
+}
+
+@keyframes loginFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Định dạng cho nút link chuyển đổi form (Đăng ký ngay / Quay lại) */
+.login-card a {
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.login-card a:hover {
+  text-decoration: underline;
+  opacity: 0.8;
+}
+
+/* Tối ưu nút "Tạo Tài Khoản" màu xanh lá (nổi bật) */
+#register-form .btn-primary {
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: var(--success, #28a745);
+  /* Dùng màu success hoặc fallback */
+  box-shadow: 0 4px 10px rgba(40, 167, 69, 0.2);
+}
+
+#register-form .btn-primary:hover {
+  background-color: #218838 !important;
+  /* Xanh đậm hơn khi hover */
+  box-shadow: 0 6px 14px rgba(40, 167, 69, 0.3);
+  transform: translateY(-1px);
+}
+
+#register-form .btn-primary:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(40, 167, 69, 0.2);
+}
+
+/* Chỉnh lại icon trong form cho ngay ngắn */
+.form-group label i {
+  margin-right: 6px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
