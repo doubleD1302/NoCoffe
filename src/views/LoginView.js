@@ -39,20 +39,6 @@ export class LoginView {
               Chưa có tài khoản? <a href="#" id="toggle-to-register" style="color: var(--primary); font-weight: 600;">Đăng ký ngay</a>
             </div>
 
-            <div style="margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 16px;">
-              <p style="font-size: 10px; color: var(--text-light); margin-bottom: 8px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">Đăng nhập nhanh (Demo)</p>
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                <button class="btn-secondary btn-quick-login" data-user="staff" data-pass="123" style="font-size: 12px; padding: 8px 12px; justify-content: flex-start;">
-                  <i class="bi bi-person-badge-fill" style="color: var(--success); font-size: 14px;"></i> Nhân viên — staff / 123
-                </button>
-                <button class="btn-secondary btn-quick-login" data-user="manager" data-pass="123" style="font-size: 12px; padding: 8px 12px; justify-content: flex-start;">
-                  <i class="bi bi-person-workspace" style="color: var(--warning); font-size: 14px;"></i> Quản lý — manager / 123
-                </button>
-                <button class="btn-secondary btn-quick-login" data-user="admin" data-pass="123" style="font-size: 12px; padding: 8px 12px; justify-content: flex-start;">
-                  <i class="bi bi-shield-lock-fill" style="color: var(--danger); font-size: 14px;"></i> Dev Admin — admin / 123
-                </button>
-              </div>
-            </div>
           </div>
 
           <!-- REGISTER SECTION -->
@@ -119,7 +105,7 @@ export class LoginView {
     });
 
     // Login form submit
-    this.container.querySelector('#login-form').addEventListener('submit', (e) => {
+    this.container.querySelector('#login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       loginError.style.display = 'none';
       const username = this.container.querySelector('#login-username').value.trim().toLowerCase();
@@ -127,11 +113,10 @@ export class LoginView {
 
       if (!username || !password) {
         loginError.style.display = 'block';
-        loginError.querySelector ? null : null;
         return;
       }
 
-      const success = this.controller.handleLogin(username, password);
+      const success = await this.controller.handleLogin(username, password);
       if (!success) {
         loginError.style.display = 'block';
       }
@@ -167,21 +152,7 @@ export class LoginView {
       const success = await this.controller.handleRegister(username, password, name, role);
       if (!success) {
         // Error message is shown by handleRegister via alert or we catch it here
-        // The controller will show error feedback if registration fails
       }
-    });
-
-    // Quick login buttons
-    this.container.querySelectorAll('.btn-quick-login').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const username = btn.getAttribute('data-user');
-        const password = btn.getAttribute('data-pass') || '123';
-        loginError.style.display = 'none';
-        const success = this.controller.handleLogin(username, password);
-        if (!success) {
-          loginError.style.display = 'block';
-        }
-      });
     });
   }
 }

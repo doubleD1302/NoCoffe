@@ -104,10 +104,20 @@ export class ViewManager {
   applyRoleRestrictions(user) {
     if (!user) {
       this.navBar.classList.add('hidden');
+      this.devFloatTrigger.classList.add('hidden');
+      this.devRoleSwitcher.classList.add('hidden');
       return;
     }
 
     this.navBar.classList.remove('hidden');
+    
+    // Chỉ hiển thị nút mở công cụ giả lập khi là tài khoản Admin duy nhất
+    if (user.username === '13022005uit' && user.role === 'dev-admin') {
+      this.devFloatTrigger.classList.remove('hidden');
+    } else {
+      this.devFloatTrigger.classList.add('hidden');
+      this.devRoleSwitcher.classList.add('hidden');
+    }
     
     // Check elements visibility based on roles
     const tabs = this.navBar.querySelectorAll('.nav-tab');

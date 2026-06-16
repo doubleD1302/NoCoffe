@@ -23,10 +23,13 @@ export class Database {
     await this.fetchDb();
   }
 
-  // Load complete state from MongoDB server (multi-tenant: filter by managerId if provided)
-  async fetchDb(managerId = null) {
+  // Load complete state from MongoDB server (multi-tenant: filter by userId)
+  async fetchDb(userId = null) {
     try {
-      const url = managerId ? `/api/db?managerId=${encodeURIComponent(managerId)}` : '/api/db';
+      if (!userId && this.data.config.activeUser) {
+        userId = this.data.config.activeUser.id;
+      }
+      const url = userId ? `/api/db?userId=${encodeURIComponent(userId)}` : '/api/db';
       const res = await fetch(url);
       if (!res.ok) throw new Error('Không thể kết nối đến máy chủ Database');
       this.data = await res.json();
@@ -45,7 +48,8 @@ export class Database {
     try {
       const res = await fetch('/api/db/reset', { method: 'POST' });
       if (res.ok) {
-        await this.fetchDb();
+        const activeUser = this.data.config.activeUser;
+        await this.fetchDb(activeUser ? activeUser.id : null);
         return true;
       }
     } catch (e) {
@@ -71,13 +75,17 @@ export class Database {
   // POST checkout order
   async processCheckout(orderRecord) {
     try {
+      const activeUser = this.data.config.activeUser;
+      if (activeUser) {
+        orderRecord.ownerId = activeUser.id;
+      }
       const res = await fetch('/api/orders/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order: orderRecord })
       });
       if (res.ok) {
-        await this.fetchDb();
+        await this.fetchDb(activeUser ? activeUser.id : null);
         return true;
       }
     } catch (e) {
@@ -89,13 +97,15 @@ export class Database {
   // POST restock ingredient
   async restockIngredient(id, qty, customCostPerUnit) {
     try {
+      const activeUser = this.data.config.activeUser;
+      const ownerId = activeUser ? activeUser.id : null;
       const res = await fetch('/api/inventory/restock', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, qty, customCostPerUnit })
+        body: JSON.stringify({ id, qty, customCostPerUnit, ownerId })
       });
       if (res.ok) {
-        await this.fetchDb();
+        await this.fetchDb(ownerId);
         return true;
       }
     } catch (e) {
@@ -107,13 +117,17 @@ export class Database {
   // POST waste
   async logWaste(wasteRecord) {
     try {
+      const activeUser = this.data.config.activeUser;
+      if (activeUser) {
+        wasteRecord.ownerId = activeUser.id;
+      }
       const res = await fetch('/api/waste', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ wasteRecord })
       });
       if (res.ok) {
-        await this.fetchDb();
+        await this.fetchDb(activeUser ? activeUser.id : null);
         return true;
       }
     } catch (e) {
@@ -125,13 +139,14 @@ export class Database {
   // POST menu update (price, recipe, base64 image)
   async updateMenuItem(id, price, recipe, image) {
     try {
+      const activeUser = this.data.config.activeUser;
       const res = await fetch('/api/menu/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, price, recipe, image })
       });
       if (res.ok) {
-        await this.fetchDb();
+        await this.fetchDb(activeUser ? activeUser.id : null);
         return true;
       }
     } catch (e) {
@@ -143,13 +158,15 @@ export class Database {
   // POST add menu item
   async addMenuItem(name, price, category, emoji) {
     try {
+      const activeUser = this.data.config.activeUser;
+      const ownerId = activeUser ? activeUser.id : null;
       const res = await fetch('/api/menu/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, price, category, emoji })
+        body: JSON.stringify({ name, price, category, emoji, ownerId })
       });
       if (res.ok) {
-        await this.fetchDb();
+        await this.fetchDb(ownerId);
         return true;
       }
     } catch (e) {
@@ -161,13 +178,14 @@ export class Database {
   // POST delete menu item
   async deleteMenuItem(id) {
     try {
+      const activeUser = this.data.config.activeUser;
       const res = await fetch('/api/menu/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })
       });
       if (res.ok) {
-        await this.fetchDb();
+        await this.fetchDb(activeUser ? activeUser.id : null);
         return true;
       }
     } catch (e) {
@@ -179,13 +197,14 @@ export class Database {
   // POST attendance Check-in / Check-out
   async logAttendance(attendanceRecord) {
     try {
+      const activeUser = this.data.config.activeUser;
       const res = await fetch('/api/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ attendanceRecord })
       });
       if (res.ok) {
-        await this.fetchDb();
+        await this.fetchDb(activeUser ? activeUser.id : null);
         return true;
       }
     } catch (e) {
@@ -197,13 +216,15 @@ export class Database {
   // POST Shift assignment updates
   async updateShift(id, employeeId, shiftName, timeRange) {
     try {
+      const activeUser = this.data.config.activeUser;
+      const managerId = activeUser ? activeUser.id : null;
       const res = await fetch('/api/shifts/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, employeeId, shiftName, timeRange })
+        body: JSON.stringify({ id, employeeId, shiftName, timeRange, managerId })
       });
       if (res.ok) {
-        await this.fetchDb();
+        await this.fetchDb(managerId);
         return true;
       }
     } catch (e) {
@@ -395,13 +416,15 @@ export class Database {
   // POST add category
   async addCategory(name) {
     try {
+      const activeUser = this.data.config.activeUser;
+      const ownerId = activeUser ? activeUser.id : null;
       const res = await fetch('/api/categories/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ name, ownerId })
       });
       if (res.ok) {
-        await this.fetchDb();
+        await this.fetchDb(ownerId);
         return true;
       }
     } catch (e) {
@@ -413,13 +436,14 @@ export class Database {
   // POST update category
   async updateCategory(id, name) {
     try {
+      const activeUser = this.data.config.activeUser;
       const res = await fetch('/api/categories/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, name })
       });
       if (res.ok) {
-        await this.fetchDb();
+        await this.fetchDb(activeUser ? activeUser.id : null);
         return true;
       }
     } catch (e) {
@@ -431,13 +455,14 @@ export class Database {
   // POST delete category
   async deleteCategory(id) {
     try {
+      const activeUser = this.data.config.activeUser;
       const res = await fetch('/api/categories/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })
       });
       if (res.ok) {
-        await this.fetchDb();
+        await this.fetchDb(activeUser ? activeUser.id : null);
         return true;
       }
     } catch (e) {
@@ -449,13 +474,15 @@ export class Database {
   // POST create shift
   async createShift(dayOfWeek, shiftName, timeRange) {
     try {
+      const activeUser = this.data.config.activeUser;
+      const ownerId = activeUser ? activeUser.id : null;
       const res = await fetch('/api/shifts/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dayOfWeek, shiftName, timeRange })
+        body: JSON.stringify({ dayOfWeek, shiftName, timeRange, ownerId })
       });
       if (res.ok) {
-        await this.fetchDb();
+        await this.fetchDb(ownerId);
         return true;
       }
     } catch (e) {
@@ -467,13 +494,74 @@ export class Database {
   // POST delete shift
   async deleteShift(id) {
     try {
+      const activeUser = this.data.config.activeUser;
       const res = await fetch('/api/shifts/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })
       });
       if (res.ok) {
-        await this.fetchDb();
+        await this.fetchDb(activeUser ? activeUser.id : null);
+        return true;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return false;
+  }
+
+  // POST add ingredient
+  async addIngredient(name, unit, minStock, initialStock, unitCost) {
+    try {
+      const activeUser = this.data.config.activeUser;
+      const ownerId = activeUser ? activeUser.id : null;
+      const res = await fetch('/api/inventory/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, unit, minStock, initialStock, unitCost, ownerId })
+      });
+      if (res.ok) {
+        await this.fetchDb(ownerId);
+        return true;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return false;
+  }
+
+  // POST update ingredient
+  async updateIngredient(id, name, unit, minStock, cost) {
+    try {
+      const activeUser = this.data.config.activeUser;
+      const ownerId = activeUser ? activeUser.id : null;
+      const res = await fetch('/api/inventory/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name, unit, minStock, cost })
+      });
+      if (res.ok) {
+        await this.fetchDb(ownerId);
+        return true;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return false;
+  }
+
+  // POST delete ingredient
+  async deleteIngredient(id) {
+    try {
+      const activeUser = this.data.config.activeUser;
+      const ownerId = activeUser ? activeUser.id : null;
+      const res = await fetch('/api/inventory/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      if (res.ok) {
+        await this.fetchDb(ownerId);
         return true;
       }
     } catch (e) {

@@ -6,37 +6,56 @@ export class AuthModel {
   }
 
   getCurrentUser() {
-    return this.db.data.config.activeUser || null;
+    try {
+      const cached = localStorage.getItem('activeUser');
+      return cached ? JSON.parse(cached) : null;
+    } catch (e) {
+      return null;
+    }
   }
 
   setCurrentUser(user) {
-    this.db.data.config.activeUser = user;
-    this.db.saveConfig(undefined, user); // Fire-and-forget sync config to server
+    if (user) {
+      localStorage.setItem('activeUser', JSON.stringify(user));
+      if (this.db && this.db.data && this.db.data.config) {
+        this.db.data.config.activeUser = user;
+      }
+    } else {
+      localStorage.removeItem('activeUser');
+      if (this.db && this.db.data && this.db.data.config) {
+        this.db.data.config.activeUser = null;
+      }
+    }
   }
 
   isBypassLogin() {
-    return !!this.db.data.config.bypassLogin;
+    return false; // Luôn yêu cầu đăng nhập thực tế
   }
 
   setBypassLogin(enabled) {
-    this.db.data.config.bypassLogin = enabled;
-    this.db.saveConfig(enabled, undefined); // Fire-and-forget sync config to server
+    // Không hỗ trợ bỏ qua đăng nhập nữa để tăng bảo mật
   }
 
-  login(username, password) {
-    const users = this.db.getTable('users');
-    const normalizedUsername = username.trim().toLowerCase();
-    const normalizedPassword = String(password).trim();
-    const user = users.find(u =>
-      String(u.username).trim().toLowerCase() === normalizedUsername &&
-      String(u.password).trim() === normalizedPassword
-    );
-    if (user) {
-      this.setCurrentUser(user);
-      return user;
+  async login(username, password) {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return { error: data.error || 'Đăng nhập thất bại!' };
+      }
+      if (data.success && data.user) {
+        this.setCurrentUser(data.user);
+        return { success: true, user: data.user };
+      }
+      return { error: 'Tên đăng nhập hoặc mật khẩu không chính xác!' };
+    } catch (error) {
+      console.error('Lỗi khi gọi API đăng nhập:', error);
+      return { error: 'Không thể kết nối đến máy chủ' };
     }
-    console.warn(`[Auth] Login failed for username="${normalizedUsername}". Available users:`, users.map(u => u.username));
-    return null;
   }
 
   logout() {
