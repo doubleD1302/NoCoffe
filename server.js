@@ -336,14 +336,25 @@ function getTenantModel(dbName, modelName, schema) {
 }
 
 // Middleware to extract database name based on x-user-id header
-app.use((req, res, next) => {
-  const userId = req.headers['x-user-id'];
-  if (userId) {
-    req.dbName = `no-coffee-${userId}`;
-  } else {
+app.use(async (req, res, next) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    if (userId) {
+      const user = await User.findOne({ id: userId });
+      if (user && user.role === 'employee' && user.managerId) {
+        req.dbName = `no-coffee-${user.managerId}`;
+      } else {
+        req.dbName = `no-coffee-${userId}`;
+      }
+    } else {
+      req.dbName = 'no-coffee';
+    }
+    next();
+  } catch (err) {
+    console.error('Lỗi trong middleware phân giải DB tenant:', err);
     req.dbName = 'no-coffee';
+    next();
   }
-  next();
 });
 
 // ==========================================================================
