@@ -305,13 +305,16 @@ export class HomeView {
           <button class="btn-icon-small btn-close-modal">×</button>
         </div>
 
-        <div style="position: relative; width: 100%; text-align: center; margin-bottom: 16px;">
-          <video id="camera-video" autoplay playsinline style="width: 100%; height: 240px; border-radius: var(--radius-md); object-fit: cover; background: #222; transform: scaleX(-1);"></video>
+        <div style="position: relative; width: 100%; text-align: center; margin-bottom: 8px;">
+          <video id="camera-video" autoplay playsinline muted style="width: 100%; height: 240px; border-radius: var(--radius-md); object-fit: cover; background: #222; transform: scaleX(-1);"></video>
           <canvas id="camera-canvas" style="display: none;"></canvas>
           <div id="camera-preview-container" style="display: none; width: 100%; height: 240px; border-radius: var(--radius-md); overflow: hidden; background: #222;">
             <img id="camera-preview-img" style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);">
           </div>
+          <input type="file" id="camera-file-input" accept="image/*" capture="user" style="display: none;">
         </div>
+
+        <div id="camera-status-msg" style="font-size: 11px; text-align: center; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;"></div>
 
         <div style="display: flex; flex-direction: column; gap: 8px;">
           <button type="button" class="btn-secondary" id="btn-camera-capture" style="height: 40px; font-weight: 600;">
@@ -332,39 +335,36 @@ export class HomeView {
     const previewImg = overlay.querySelector('#camera-preview-img');
     const btnCapture = overlay.querySelector('#btn-camera-capture');
     const btnConfirm = overlay.querySelector('#btn-camera-confirm');
+    const fileInput = overlay.querySelector('#camera-file-input');
+    const statusMsg = overlay.querySelector('#camera-status-msg');
 
     let localStream = null;
     let capturedBase64 = '';
+    let isFallback = false;
 
-    // Start video stream
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-      .then(stream => {
-        localStream = stream;
-        video.srcObject = stream;
-      })
-      .catch(err => {
-        console.error('Không thể truy cập camera, chạy giả lập kiểm thử:', err);
-        // Headless fallback
-        this.controller.viewManager.showToast('Không thể mở camera. Chế độ giả lập chấm công.', 'warning');
-        
-        canvas.width = 320;
-        canvas.height = 240;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#4f46e5';
-        ctx.fillRect(0, 0, 320, 240);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '14px Arial';
-        ctx.fillText(`${user.name} - Giả lập`, 20, 80);
-        ctx.fillText(isCheckOut ? 'Check-out' : 'Check-in', 20, 110);
-        ctx.fillText(new Date().toLocaleString('vi-VN'), 20, 140);
-        capturedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+    const activateFallbackMode = (errReason = '') => {
+      console.warn('Fallback to native camera file input:', errReason);
+      isFallback = true;
+      statusMsg.innerHTML = `<span style="color: var(--warning); font-weight: 600;"><i class="bi bi-info-circle-fill"></i> Không thể truy cập trực tiếp camera.</span><br>Vui lòng chụp ảnh hoặc tải tệp ảnh từ thiết bị để chấm công.`;
+      video.style.display = 'none';
+      previewImg.style.transform = 'none'; // Native photo orientation is standard
+      btnCapture.innerHTML = '<i class="bi bi-camera-fill"></i> Chọn/Chụp ảnh chấm công';
+      btnCapture.className = 'btn-primary';
+    };
 
-        previewImg.src = capturedBase64;
-        video.style.display = 'none';
-        previewContainer.style.display = 'block';
-        btnCapture.style.display = 'none';
-        btnConfirm.style.display = 'block';
-      });
+    // Start video stream safely
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+        .then(stream => {
+          localStream = stream;
+          video.srcObject = stream;
+        })
+        .catch(err => {
+          activateFallbackMode(err.message);
+        });
+    } else {
+      activateFallbackMode('MediaDevices not supported or insecure HTTP context on mobile');
+    }
 
     const stopCamera = () => {
       if (localStream) {
@@ -382,8 +382,46 @@ export class HomeView {
       if (e.target === overlay) close();
     });
 
+    // File input selection event
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            canvas.width = 320;
+            canvas.height = 240;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, 320, 240);
+            capturedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+            
+            previewImg.src = capturedBase64;
+            previewContainer.style.display = 'block';
+            btnCapture.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Chọn ảnh khác';
+            btnConfirm.style.display = 'block';
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
     btnCapture.addEventListener('click', () => {
-      if (btnCapture.innerText.includes('Chụp ảnh')) {
+      if (isFallback && previewContainer.style.display !== 'block') {
+        fileInput.click();
+      } else if (previewContainer.style.display === 'block') {
+        capturedBase64 = '';
+        previewContainer.style.display = 'none';
+        btnConfirm.style.display = 'none';
+        
+        if (!isFallback) {
+          video.style.display = 'block';
+          btnCapture.innerHTML = '<i class="bi bi-camera-fill"></i> Chụp ảnh';
+        } else {
+          fileInput.click();
+        }
+      } else {
         canvas.width = video.videoWidth || 640;
         canvas.height = video.videoHeight || 480;
         const ctx = canvas.getContext('2d');
@@ -398,12 +436,6 @@ export class HomeView {
         
         btnCapture.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Chụp lại';
         btnConfirm.style.display = 'block';
-      } else {
-        capturedBase64 = '';
-        video.style.display = 'block';
-        previewContainer.style.display = 'none';
-        btnCapture.innerHTML = '<i class="bi bi-camera-fill"></i> Chụp ảnh';
-        btnConfirm.style.display = 'none';
       }
     });
 

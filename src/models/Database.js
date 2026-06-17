@@ -155,6 +155,24 @@ export class Database {
     return false;
   }
 
+  // POST export ingredient
+  async exportIngredient(id, qty, reason) {
+    try {
+      const res = await fetch('/api/inventory/export', {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ id, qty, reason })
+      });
+      if (res.ok) {
+        await this.fetchDb();
+        return true;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return false;
+  }
+
   // POST add ingredient
   async addIngredient(name, unit, stock, cost, minStock) {
     try {
@@ -471,6 +489,28 @@ export class Database {
       if (res.ok) {
         await this.fetchDb();
         return true;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return false;
+  }
+
+  // POST update Profile
+  async updateProfile(id, name, password, avatar) {
+    try {
+      const res = await fetch('/api/users/update-profile', {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ id, name, password, avatar })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.user) {
+          this.setActiveUser(data.user);
+          await this.fetchDb();
+          return true;
+        }
       }
     } catch (e) {
       console.error(e);

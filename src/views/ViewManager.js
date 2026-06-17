@@ -33,11 +33,9 @@ export class ViewManager {
       });
     });
 
-    // Profile Click - triggers logout/re-login action
+    // Profile Click - triggers profile menu modal
     this.headerUserBadge.addEventListener('click', () => {
-      this.showConfirm('Bạn có muốn đăng xuất không?', () => {
-        this.controller.logout();
-      });
+      this.openProfileModal();
     });
 
     // Dev Toggle button clicks
@@ -82,14 +80,38 @@ export class ViewManager {
   updateHeader(user) {
     if (!user) {
       this.headerRoleName.innerText = 'Khách';
+      this.headerRoleDot.style.display = 'inline-block';
       this.headerRoleDot.className = 'role-dot';
+      const existingImg = this.headerUserBadge.querySelector('.header-avatar-img');
+      if (existingImg) existingImg.remove();
+
       this.devFloatTrigger.classList.add('hidden');
       this.devRoleSwitcher.classList.add('hidden');
       return;
     }
 
     this.headerRoleName.innerText = user.name;
-    this.headerRoleDot.className = `role-dot role-${user.role}`;
+    
+    const existingImg = this.headerUserBadge.querySelector('.header-avatar-img');
+    if (user.avatar) {
+      this.headerRoleDot.style.display = 'none';
+      if (existingImg) {
+        existingImg.src = user.avatar;
+      } else {
+        const img = document.createElement('img');
+        img.className = 'header-avatar-img';
+        img.src = user.avatar;
+        img.style.width = '20px';
+        img.style.height = '20px';
+        img.style.borderRadius = '50%';
+        img.style.objectFit = 'cover';
+        this.headerUserBadge.insertBefore(img, this.headerRoleName);
+      }
+    } else {
+      this.headerRoleDot.style.display = 'inline-block';
+      this.headerRoleDot.className = `role-dot role-${user.role}`;
+      if (existingImg) existingImg.remove();
+    }
     
     const isMainAdmin = user.username === '13022005uit';
     if (isMainAdmin) {
@@ -229,5 +251,167 @@ export class ViewManager {
     if (overlay) {
       overlay.classList.add('hidden');
     }
+  }
+
+  openProfileModal() {
+    const user = this.controller.getActiveUser();
+    if (!user) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '9999';
+    overlay.style.alignItems = 'center';
+
+    const drawProfileMenu = () => {
+      const avatarHtml = user.avatar 
+        ? `<img src="${user.avatar}" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">`
+        : `<div style="width: 64px; height: 64px; border-radius: 50%; background: var(--primary-soft); display: flex; align-items: center; justify-content: center; border: 2px solid var(--border-color);"><i class="bi bi-person-fill" style="font-size: 32px; color: var(--primary-dark);"></i></div>`;
+
+      overlay.innerHTML = `
+        <div class="modal-content" style="max-width: 320px; border-radius: var(--radius-lg); text-align: center; padding: 20px; align-self: center;">
+          <div class="drawer-handle"></div>
+          <div class="modal-header">
+            <h3>Tài Khoản Cá Nhân</h3>
+            <button class="btn-icon-small btn-close-modal">×</button>
+          </div>
+          
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 16px 0;">
+            ${avatarHtml}
+            <div>
+              <h4 style="font-size: 16px; font-weight: 700; color: var(--text-main);">${user.name}</h4>
+              <span style="font-size: 11px; color: var(--text-muted);">@${user.username} • ${user.role === 'dev-admin' ? 'Quản trị viên' : (user.role === 'manager' ? 'Quản lý' : 'Nhân viên')}</span>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+            <button class="btn-primary" id="btn-edit-profile" style="height: 40px; width: 100%;"><i class="bi bi-pencil-square"></i> Sửa thông tin</button>
+            <button class="btn-danger" id="btn-logout-confirm" style="height: 40px; width: 100%;"><i class="bi bi-box-arrow-right"></i> Đăng xuất</button>
+          </div>
+        </div>
+      `;
+
+      overlay.querySelector('.btn-close-modal').addEventListener('click', () => overlay.remove());
+      overlay.querySelector('#btn-edit-profile').addEventListener('click', drawEditForm);
+      overlay.querySelector('#btn-logout-confirm').addEventListener('click', () => {
+        overlay.remove();
+        this.showConfirm('Bạn có muốn đăng xuất không?', () => {
+          this.controller.logout();
+        });
+      });
+    };
+
+    const drawEditForm = () => {
+      let tempAvatar = user.avatar || '';
+
+      overlay.innerHTML = `
+        <div class="modal-content" style="max-width: 320px; border-radius: var(--radius-lg); padding: 20px; align-self: center;">
+          <div class="modal-header">
+            <h3>Sửa Thông Tin</h3>
+            <button class="btn-icon-small btn-back-profile">←</button>
+          </div>
+
+          <form id="edit-profile-form" style="margin-top: 12px; display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px; background: var(--bg-app); padding: 8px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+              <div id="profile-edit-avatar-preview" style="width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; overflow: hidden; background: white;">
+                ${tempAvatar ? `<img src="${tempAvatar}" style="width: 100%; height: 100%; object-fit: cover;">` : `<i class="bi bi-person" style="font-size: 24px; color: var(--text-light);"></i>`}
+              </div>
+              <div style="flex: 1;">
+                <input type="file" id="edit-profile-avatar-file" accept="image/*" style="display: none;">
+                <button type="button" class="btn-secondary" id="btn-trigger-upload-avatar" style="font-size: 10px; padding: 4px 8px;"><i class="bi bi-upload"></i> Chọn ảnh</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="profile-name">Họ và tên</label>
+              <input type="text" id="profile-name" class="input-field" value="${user.name}" required>
+            </div>
+
+            <div class="form-group">
+              <label for="profile-password">Mật khẩu mới</label>
+              <input type="password" id="profile-password" class="input-field" placeholder="Để trống nếu không đổi">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 8px;">
+              <button type="button" class="btn-secondary btn-cancel-edit" style="height: 38px;">Hủy</button>
+              <button type="submit" class="btn-primary" style="height: 38px;">Lưu</button>
+            </div>
+          </form>
+        </div>
+      `;
+
+      const avatarInput = overlay.querySelector('#edit-profile-avatar-file');
+      const avatarTrigger = overlay.querySelector('#btn-trigger-upload-avatar');
+      const avatarPreview = overlay.querySelector('#profile-edit-avatar-preview');
+
+      avatarTrigger.addEventListener('click', () => avatarInput.click());
+      avatarInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          this.compressImage(file, (base64Str) => {
+            tempAvatar = base64Str;
+            avatarPreview.innerHTML = `<img src="${base64Str}" style="width: 100%; height: 100%; object-fit: cover;">`;
+          });
+        }
+      });
+
+      overlay.querySelector('.btn-back-profile').addEventListener('click', drawProfileMenu);
+      overlay.querySelector('.btn-cancel-edit').addEventListener('click', drawProfileMenu);
+
+      overlay.querySelector('#edit-profile-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newName = overlay.querySelector('#profile-name').value.trim();
+        const newPassword = overlay.querySelector('#profile-password').value.trim() || undefined;
+
+        this.showLoading('Đang cập nhật tài khoản...');
+        const success = await this.controller.handleUpdateProfile(user.id, newName, newPassword, tempAvatar);
+        this.hideLoading();
+
+        if (success) {
+          this.showToast('Cập nhật tài khoản thành công!', 'success');
+          overlay.remove();
+        } else {
+          this.showToast('Cập nhật tài khoản thất bại!', 'danger');
+        }
+      });
+    };
+
+    drawProfileMenu();
+    document.body.appendChild(overlay);
+  }
+
+  compressImage(file, callback) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 200;
+        const MAX_HEIGHT = 200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        callback(dataUrl);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
   }
 }

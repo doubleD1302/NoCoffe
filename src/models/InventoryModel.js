@@ -31,6 +31,12 @@ export class InventoryModel {
     return success;
   }
 
+  // Asynchronous export synced to MongoDB
+  async exportIngredient(id, qty, reason) {
+    const success = await this.db.exportIngredient(id, qty, reason);
+    return success;
+  }
+
   getStockStatus(ing) {
     if (ing.stock <= ing.minStock) {
       return 'danger'; // Red warning: running out

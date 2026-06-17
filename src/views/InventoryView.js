@@ -15,6 +15,7 @@ export class InventoryView {
       ? `
         <div style="display: flex; gap: 8px;">
           <button class="btn-secondary" id="btn-open-add-ing" style="padding: 6px 12px; font-size: 13px;"><i class="bi bi-plus-circle"></i> Thêm mới</button>
+          <button class="btn-secondary" id="btn-open-export" style="padding: 6px 12px; font-size: 13px; background: var(--danger); border-color: var(--danger); color: white;"><i class="bi bi-box-arrow-up"></i> Xuất kho</button>
           <button class="btn-primary" id="btn-open-restock" style="padding: 6px 12px; font-size: 13px;"><i class="bi bi-box-seam-fill"></i> Nhập kho</button>
         </div>
       ` 
@@ -41,6 +42,13 @@ export class InventoryView {
     if (btnRestock) {
       btnRestock.addEventListener('click', () => {
         this.openRestockModal();
+      });
+    }
+
+    const btnExport = this.container.querySelector('#btn-open-export');
+    if (btnExport) {
+      btnExport.addEventListener('click', () => {
+        this.openExportModal();
       });
     }
 
@@ -350,6 +358,92 @@ export class InventoryView {
       const minStock = Number(overlay.querySelector('#edit-ing-min').value);
 
       const success = await this.controller.handleUpdateIngredient(ingId, name, unit, stock, cost, minStock);
+      if (success) {
+        this.render();
+        closeModal();
+      }
+    });
+  }
+
+  openExportModal() {
+    const inventory = this.controller.getInventoryModel();
+    const ingredients = inventory.getIngredients();
+    const mount = this.container.querySelector('#inventory-modals-mount');
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    
+    const optionsHtml = ingredients.map(ing => 
+      `<option value="${ing.id}">${ing.name} (${ing.unit}) - Tồn: ${ing.stock.toLocaleString('vi-VN')}</option>`
+    ).join('');
+
+    overlay.innerHTML = `
+      <div class="modal-content">
+        <div class="drawer-handle"></div>
+        <div class="modal-header">
+          <h3>Xuất Kho Nguyên Liệu</h3>
+          <button class="btn-icon-small btn-close-modal">×</button>
+        </div>
+
+        <form id="export-form">
+          <div class="form-group">
+            <label for="export-ing-id">Nguyên liệu xuất</label>
+            <select id="export-ing-id" class="select-field">
+              ${optionsHtml}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="export-qty">Số lượng xuất</label>
+            <input type="number" id="export-qty" class="input-field" min="0" step="any" required placeholder="Nhập số lượng xuất...">
+          </div>
+
+          <div class="form-group">
+            <label for="export-reason">Lý do xuất kho</label>
+            <input type="text" id="export-reason" class="input-field" required placeholder="Ví dụ: Sử dụng nội bộ, Hỏng hóc, Trả hàng...">
+          </div>
+
+          <button type="submit" class="btn-primary" style="width: 100%; height: 44px; margin-top: 10px; background: var(--danger); border-color: var(--danger);">
+            <i class="bi bi-box-arrow-up"></i> Xác Nhận Xuất Kho
+          </button>
+        </form>
+      </div>
+    `;
+
+    mount.appendChild(overlay);
+
+    const closeModal = () => {
+      overlay.remove();
+    };
+
+    overlay.querySelector('.btn-close-modal').addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeModal();
+    });
+
+    overlay.querySelector('#export-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const ingId = overlay.querySelector('#export-ing-id').value;
+      const qty = Number(overlay.querySelector('#export-qty').value);
+      const reason = overlay.querySelector('#export-reason').value.trim();
+
+      const ing = inventory.getIngredient(ingId);
+      if (!ing) {
+        this.controller.viewManager.showToast('Không tìm thấy nguyên liệu đã chọn', 'danger');
+        return;
+      }
+
+      if (qty <= 0) {
+        this.controller.viewManager.showToast('Số lượng xuất phải lớn hơn 0', 'danger');
+        return;
+      }
+
+      if (ing.stock < qty) {
+        this.controller.viewManager.showToast(`Số lượng xuất vượt quá tồn kho hiện tại (${ing.stock.toLocaleString('vi-VN')} ${ing.unit})`, 'danger');
+        return;
+      }
+
+      const success = await this.controller.handleExportIngredient(ingId, qty, reason);
       if (success) {
         this.render();
         closeModal();

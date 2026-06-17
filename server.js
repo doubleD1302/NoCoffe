@@ -36,7 +36,8 @@ const UserSchema = new mongoose.Schema({
   hourlyWage: { type: Number, default: 20000 },
   salaryCycle: { type: String, default: 'weekly' }, // 'weekly' | 'monthly'
   salaryStartDate: { type: String, default: '2026-06-01' },
-  qrCode: { type: String, default: '' }
+  qrCode: { type: String, default: '' },
+  avatar: { type: String, default: '' }
 });
 
 const IngredientSchema = new mongoose.Schema({
@@ -147,19 +148,139 @@ const DEFAULT_USERS = [
 ];
 
 const DEFAULT_INGREDIENTS = [
-  { id: 'cf', name: 'Cà phê hạt', unit: 'g', stock: 5000, cost: 150, minStock: 2000 },
-  { id: 'sua', name: 'Sữa đặc', unit: 'g', stock: 3000, cost: 60, minStock: 1000 },
-  { id: 'suatuoi', name: 'Sữa tươi', unit: 'ml', stock: 6000, cost: 40, minStock: 2000 },
-  { id: 'duong', name: 'Nước đường', unit: 'ml', stock: 3000, cost: 10, minStock: 1000 },
-  { id: 'ly', name: 'Ly nhựa', unit: 'cái', stock: 500, cost: 500, minStock: 100 },
-  { id: 'da', name: 'Đá viên', unit: 'g', stock: 20000, cost: 5, minStock: 5000 }
+  { id: 'sua', name: 'Sữa đặc', unit: 'g', stock: 10000, cost: 60, minStock: 2000 },
+  { id: 'suatuoi', name: 'Sữa tươi', unit: 'ml', stock: 10000, cost: 40, minStock: 2000 },
+  { id: 'kem_man', name: 'Kem mặn', unit: 'ml', stock: 5000, cost: 50, minStock: 1000 },
+  { id: 'matcha', name: 'Bột Matcha', unit: 'g', stock: 2000, cost: 120, minStock: 500 },
+  { id: 'rich', name: 'Sữa béo Rich', unit: 'ml', stock: 5000, cost: 50, minStock: 1000 },
+  { id: 'chunky_dau', name: 'Chunky dâu', unit: 'g', stock: 3000, cost: 100, minStock: 500 },
+  { id: 'oreo', name: 'Bánh Oreo', unit: 'g', stock: 2000, cost: 30, minStock: 500 },
+  { id: 'kem_cheese', name: 'Kem cheese', unit: 'ml', stock: 5000, cost: 60, minStock: 1000 },
+  { id: 'cf', name: 'Cà phê hạt', unit: 'g', stock: 10000, cost: 150, minStock: 2000 },
+  { id: 'duong', name: 'Nước đường', unit: 'ml', stock: 10000, cost: 10, minStock: 2000 },
+  { id: 'kem_choco', name: 'Kem choco', unit: 'ml', stock: 5000, cost: 50, minStock: 1000 },
+  { id: 'oatside', name: 'Sữa Oatside', unit: 'ml', stock: 10000, cost: 80, minStock: 2000 },
+  { id: 'sua_gau', name: 'Sữa gấu', unit: 'lon', stock: 100, cost: 15000, minStock: 20 },
+  { id: 'suong_sao', name: 'Thạch sương sáo', unit: 'g', stock: 5000, cost: 20, minStock: 1000 },
+  { id: 'caramel_muoi', name: 'Caramel muối', unit: 'ml', stock: 3000, cost: 80, minStock: 500 },
+  { id: 'tra_trai_cay', name: 'Cốt Trà trái cây', unit: 'ml', stock: 20000, cost: 15, minStock: 5000 },
+  { id: 'cot_tac', name: 'Nước cốt tắc', unit: 'ml', stock: 2000, cost: 20, minStock: 500 },
+  { id: 'syrup_chanh', name: 'Syrup chanh', unit: 'ml', stock: 2000, cost: 30, minStock: 500 },
+  { id: 'tran_chau_trang', name: 'Trân châu trắng', unit: 'g', stock: 5000, cost: 25, minStock: 1000 },
+  { id: 'sot_xoai', name: 'Sốt xoài', unit: 'g', stock: 3000, cost: 50, minStock: 500 },
+  { id: 'syrup_xoai', name: 'Syrup xoài', unit: 'ml', stock: 2000, cost: 40, minStock: 500 },
+  { id: 'xoai_ngam', name: 'Xoài ngâm', unit: 'g', stock: 3000, cost: 60, minStock: 500 },
+  { id: 'thach_dua', name: 'Thạch dừa', unit: 'g', stock: 5000, cost: 30, minStock: 1000 },
+  { id: 'syrup_dau', name: 'Syrup dâu', unit: 'ml', stock: 2000, cost: 40, minStock: 500 },
+  { id: 'hat_no_cu_nang', name: 'Hạt nổ củ năng', unit: 'g', stock: 5000, cost: 40, minStock: 1000 },
+  { id: 'syrup_luu', name: 'Syrup lựu', unit: 'ml', stock: 2000, cost: 40, minStock: 500 },
+  { id: 'syrup_dao', name: 'Syrup đào', unit: 'ml', stock: 2000, cost: 40, minStock: 500 },
+  { id: 'sot_dao', name: 'Sốt đào', unit: 'g', stock: 3000, cost: 50, minStock: 500 },
+  { id: 'topping_dao', name: 'Đào miếng (Topping)', unit: 'lát', stock: 200, cost: 1000, minStock: 50 },
+  { id: 'syrup_thom', name: 'Syrup thơm', unit: 'ml', stock: 2000, cost: 40, minStock: 500 },
+  { id: 'sot_thom', name: 'Sốt thơm', unit: 'g', stock: 3000, cost: 50, minStock: 500 },
+  { id: 'topping_thom', name: 'Đác thơm (Topping)', unit: 'hạt', stock: 1000, cost: 500, minStock: 200 },
+  { id: 'chunky_nho', name: 'Chunky nho', unit: 'g', stock: 3000, cost: 80, minStock: 500 },
+  { id: 'syrup_chanh_day', name: 'Syrup chanh dây', unit: 'ml', stock: 2000, cost: 40, minStock: 500 },
+  { id: 'chanh_day', name: 'Chanh dây tươi', unit: 'trái', stock: 100, cost: 3000, minStock: 20 },
+  { id: 'bot_sua', name: 'Bột sữa', unit: 'g', stock: 5000, cost: 80, minStock: 1000 },
+  { id: 'sinh_to_xoai', name: 'Sinh tố xoài', unit: 'ml', stock: 3000, cost: 50, minStock: 500 },
+  { id: 'nguyen_la', name: 'Trà Nguyên Lá (Ủ)', unit: 'ml', stock: 20000, cost: 15, minStock: 5000 },
+  { id: 'kem_trung', name: 'Kem trứng', unit: 'ml', stock: 3000, cost: 60, minStock: 500 },
+  { id: 'khoai_mon_dam', name: 'Khoai môn dầm', unit: 'g', stock: 3000, cost: 50, minStock: 500 },
+  { id: 'tran_chau_khoai_mon', name: 'Trân châu khoai môn', unit: 'g', stock: 5000, cost: 30, minStock: 1000 },
+  { id: 'cacao', name: 'Bột Cacao', unit: 'g', stock: 3000, cost: 100, minStock: 500 },
+  { id: 'sot_choco', name: 'Sốt choco', unit: 'ml', stock: 2000, cost: 40, minStock: 500 },
+  { id: 'vun_oreo', name: 'Vụn bánh Oreo', unit: 'g', stock: 2000, cost: 30, minStock: 500 },
+  { id: 'kem_buon_me', name: 'Kem buôn mê', unit: 'ml', stock: 5000, cost: 50, minStock: 1000 },
+  { id: 'nươc_soi', name: 'Nước sôi', unit: 'ml', stock: 100000, cost: 0, minStock: 1000 },
+  { id: 'ly', name: 'Ly nhựa', unit: 'cái', stock: 1000, cost: 500, minStock: 200 },
+  { id: 'da', name: 'Đá viên', unit: 'g', stock: 50000, cost: 5, minStock: 10000 }
 ];
 
 const DEFAULT_MENU = [
-  { id: 'cf-den', name: 'Cà phê đen đá', price: 20000, category: 'cf', emoji: '☕', recipe: { cf: 20, duong: 15, ly: 1, da: 150 } },
-  { id: 'cf-sua', name: 'Cà phê sữa đá', price: 25000, category: 'cf', emoji: '🧋', recipe: { cf: 20, sua: 30, ly: 1, da: 150 } },
-  { id: 'bac-xiu', name: 'Bạc xỉu', price: 29000, category: 'cf', emoji: '🥛', recipe: { cf: 15, sua: 40, suatuoi: 60, ly: 1, da: 150 } },
-  { id: 'sua-tuoi-tc', name: 'Sữa tươi trân châu đường đen', price: 35000, category: 'milktea', emoji: '🥤', recipe: { suatuoi: 150, duong: 30, ly: 1, da: 150 } }
+  // MATCHA
+  { id: 'matcha-kem-man-m', name: 'Matcha kem mặn (M)', price: 30000, category: 'matcha', emoji: '🍵', recipe: { sua: 30, suatuoi: 80, kem_man: 30, matcha: 3, nươc_soi: 30, ly: 1, da: 150 } },
+  { id: 'matcha-kem-man-l', name: 'Matcha kem mặn (L)', price: 35000, category: 'matcha', emoji: '🍵', recipe: { sua: 45, suatuoi: 120, kem_man: 40, matcha: 4, nươc_soi: 40, ly: 1, da: 180 } },
+  { id: 'matcha-dau-m', name: 'Matcha dâu (M)', price: 32000, category: 'matcha', emoji: '🍵', recipe: { sua: 20, suatuoi: 80, rich: 10, chunky_dau: 20, matcha: 3, nươc_soi: 30, ly: 1, da: 150 } },
+  { id: 'matcha-dau-l', name: 'Matcha dâu (L)', price: 37000, category: 'matcha', emoji: '🍵', recipe: { sua: 30, suatuoi: 120, rich: 15, chunky_dau: 30, matcha: 4, nươc_soi: 40, ly: 1, da: 180 } },
+  { id: 'matcha-oreo-kem-pmd-m', name: 'Matcha oreo kem phô mai dẻo (M)', price: 35000, category: 'matcha', emoji: '🍵', recipe: { sua: 30, suatuoi: 100, oreo: 20, kem_cheese: 40, matcha: 3, nươc_soi: 30, ly: 1, da: 150 } },
+  { id: 'matcha-oreo-kem-pmd-l', name: 'Matcha oreo kem phô mai dẻo (L)', price: 40000, category: 'matcha', emoji: '🍵', recipe: { sua: 45, suatuoi: 140, oreo: 30, kem_cheese: 50, matcha: 4, nươc_soi: 40, ly: 1, da: 180 } },
+  { id: 'matcha-latte-m', name: 'Matcha latte (M)', price: 28000, category: 'matcha', emoji: '🍵', recipe: { sua: 30, suatuoi: 80, matcha: 3, nươc_soi: 30, ly: 1, da: 150 } },
+  { id: 'matcha-latte-l', name: 'Matcha latte (L)', price: 33000, category: 'matcha', emoji: '🍵', recipe: { sua: 45, suatuoi: 120, matcha: 4, nươc_soi: 40, ly: 1, da: 180 } },
+  { id: 'matcha-oatside-m', name: 'Matcha oatside (M)', price: 35000, category: 'matcha', emoji: '🍵', recipe: { sua: 30, oatside: 80, matcha: 3, nươc_soi: 30, ly: 1, da: 150 } },
+  { id: 'matcha-oatside-l', name: 'Matcha oatside (L)', price: 40000, category: 'matcha', emoji: '🍵', recipe: { sua: 45, oatside: 120, matcha: 4, nươc_soi: 40, ly: 1, da: 180 } },
+  { id: 'matcha-caramel-mh-m', name: 'Matcha caramel muối hồng (M)', price: 32000, category: 'matcha', emoji: '🍵', recipe: { sua: 30, suatuoi: 80, caramel_muoi: 10, matcha: 3, nươc_soi: 30, ly: 1, da: 150 } },
+  { id: 'matcha-caramel-mh-l', name: 'Matcha caramel muối hồng (L)', price: 37000, category: 'matcha', emoji: '🍵', recipe: { sua: 45, suatuoi: 120, caramel_muoi: 15, matcha: 4, nươc_soi: 40, ly: 1, da: 180 } },
+  { id: 'matcha-sua-gau-l', name: 'Matcha sữa gấu (L)', price: 35000, category: 'matcha', emoji: '🍵', recipe: { sua: 50, sua_gau: 1, matcha: 4, nươc_soi: 40, ly: 1, da: 180 } },
+  { id: 'matcha-suong-sao-m', name: 'Matcha sương sáo (M)', price: 32000, category: 'matcha', emoji: '🍵', recipe: { sua: 30, suatuoi: 80, suong_sao: 50, matcha: 3, nươc_soi: 30, ly: 1, da: 150 } },
+  { id: 'matcha-suong-sao-l', name: 'Matcha sương sáo (L)', price: 37000, category: 'matcha', emoji: '🍵', recipe: { sua: 45, suatuoi: 120, suong_sao: 70, matcha: 4, nươc_soi: 40, ly: 1, da: 180 } },
+  { id: 'matcha-kem-cheese-m', name: 'Matcha kem cheese (M)', price: 32000, category: 'matcha', emoji: '🍵', recipe: { sua: 30, suatuoi: 80, kem_cheese: 40, matcha: 3, nươc_soi: 30, ly: 1, da: 150 } },
+  { id: 'matcha-kem-cheese-l', name: 'Matcha kem cheese (L)', price: 37000, category: 'matcha', emoji: '🍵', recipe: { sua: 45, suatuoi: 120, kem_cheese: 50, matcha: 4, nươc_soi: 40, ly: 1, da: 180 } },
+
+  // COFFEE
+  { id: 'cf-da-m', name: 'Cà phê đá (M)', price: 18000, category: 'cf', emoji: '☕', recipe: { cf: 60, duong: 15, ly: 1, da: 150 } },
+  { id: 'cf-da-l', name: 'Cà phê đá (L)', price: 22000, category: 'cf', emoji: '☕', recipe: { cf: 80, duong: 25, ly: 1, da: 180 } },
+  { id: 'cf-sua-m', name: 'Cà phê sữa (M)', price: 20000, category: 'cf', emoji: '☕', recipe: { cf: 60, sua: 30, ly: 1, da: 150 } },
+  { id: 'cf-sua-l', name: 'Cà phê sữa (L)', price: 25000, category: 'cf', emoji: '☕', recipe: { cf: 80, sua: 45, ly: 1, da: 180 } },
+  { id: 'cf-muoi-m', name: 'Cà phê muối (M)', price: 25000, category: 'cf', emoji: '☕', recipe: { cf: 30, sua: 20, kem_man: 30, ly: 1, da: 150 } },
+  { id: 'cf-muoi-l', name: 'Cà phê muối (L)', price: 30000, category: 'cf', emoji: '☕', recipe: { cf: 40, sua: 30, kem_man: 40, ly: 1, da: 180 } },
+  { id: 'cf-kem-deo-buon-me-m', name: 'Cf kem dẻo buôn mê (M)', price: 28000, category: 'cf', emoji: '☕', recipe: { cf: 40, sua: 30, suatuoi: 20, kem_choco: 40, ly: 1, da: 150 } },
+  { id: 'cf-kem-deo-buon-me-l', name: 'Cf kem dẻo buôn mê (L)', price: 33000, category: 'cf', emoji: '☕', recipe: { cf: 50, sua: 40, suatuoi: 30, kem_choco: 50, ly: 1, da: 180 } },
+  { id: 'bac-xiu-m', name: 'Bạc xỉu (M)', price: 22000, category: 'cf', emoji: '☕', recipe: { cf: 30, sua: 30, suatuoi: 80, ly: 1, da: 150 } },
+  { id: 'bac-xiu-l', name: 'Bạc xỉu (L)', price: 27000, category: 'cf', emoji: '☕', recipe: { cf: 40, sua: 45, suatuoi: 120, ly: 1, da: 180 } },
+  { id: 'bac-xiu-kem-deo-buon-me-m', name: 'Bạc xỉu kem dẻo buôn mê (M)', price: 30000, category: 'cf', emoji: '☕', recipe: { cf: 30, sua: 30, suatuoi: 80, kem_choco: 40, ly: 1, da: 150 } },
+  { id: 'bac-xiu-kem-deo-buon-me-l', name: 'Bạc xỉu kem dẻo buôn mê (L)', price: 35000, category: 'cf', emoji: '☕', recipe: { cf: 40, sua: 45, suatuoi: 120, kem_choco: 50, ly: 1, da: 180 } },
+  { id: 'bac-xiu-muoi-m', name: 'Bạc xỉu muối (M)', price: 28000, category: 'cf', emoji: '☕', recipe: { cf: 30, sua: 20, suatuoi: 80, kem_man: 30, ly: 1, da: 150 } },
+  { id: 'bac-xiu-muoi-l', name: 'Bạc xỉu muối (L)', price: 33000, category: 'cf', emoji: '☕', recipe: { cf: 40, sua: 30, suatuoi: 120, kem_man: 40, ly: 1, da: 180 } },
+  { id: 'cf-sua-oatside-m', name: 'Cà phê sữa Oatside (M)', price: 32000, category: 'cf', emoji: '☕', recipe: { cf: 30, sua: 30, oatside: 80, ly: 1, da: 150 } },
+  { id: 'cf-sua-oatside-l', name: 'Cà phê sữa Oatside (L)', price: 37000, category: 'cf', emoji: '☕', recipe: { cf: 40, sua: 45, oatside: 120, ly: 1, da: 180 } },
+  { id: 'cf-sua-gau-l', name: 'Cà phê sữa gấu (L)', price: 32000, category: 'cf', emoji: '☕', recipe: { cf: 40, sua: 50, sua_gau: 1, ly: 1, da: 180 } },
+  { id: 'cf-sua-tuoi-suong-sao-m', name: 'Cf sữa tươi sương sáo (M)', price: 28000, category: 'cf', emoji: '☕', recipe: { cf: 30, sua: 30, suatuoi: 80, suong_sao: 50, ly: 1, da: 150 } },
+  { id: 'cf-sua-tuoi-suong-sao-l', name: 'Cf sữa tươi sương sáo (L)', price: 33000, category: 'cf', emoji: '☕', recipe: { cf: 40, sua: 45, suatuoi: 120, suong_sao: 70, ly: 1, da: 180 } },
+  { id: 'cf-caramel-muoi-m', name: 'Cà phê caramel muối (M)', price: 28000, category: 'cf', emoji: '☕', recipe: { cf: 30, sua: 20, suatuoi: 80, caramel_muoi: 10, ly: 1, da: 150 } },
+  { id: 'cf-caramel-muoi-l', name: 'Cà phê caramel muối (L)', price: 33000, category: 'cf', emoji: '☕', recipe: { cf: 40, sua: 30, suatuoi: 120, caramel_muoi: 15, ly: 1, da: 180 } },
+
+  // TRÀ TRÁI CÂY
+  { id: 'luc-tra-chanh-l', name: 'Lục trà chanh (L)', price: 30000, category: 'tra', emoji: '🍹', recipe: { tra_trai_cay: 120, duong: 15, cot_tac: 10, syrup_chanh: 30, tran_chau_trang: 40, ly: 1, da: 180 } },
+  { id: 'tra-xoai-chan-day-l', name: 'Trà xoài chanh dây (L)', price: 35000, category: 'tra', emoji: '🍹', recipe: { tra_trai_cay: 120, duong: 15, cot_tac: 5, sot_xoai: 20, syrup_xoai: 20, xoai_ngam: 70, ly: 1, da: 180 } },
+  { id: 'tra-xoai-thach-dua-l', name: 'Trà xoài thạch dừa (L)', price: 32000, category: 'tra', emoji: '🍹', recipe: { tra_trai_cay: 120, duong: 15, cot_tac: 5, sot_xoai: 20, syrup_xoai: 20, thach_dua: 40, ly: 1, da: 180 } },
+  { id: 'tra-dau-dao-hong-l', name: 'Trà dâu đào hồng (L)', price: 35000, category: 'tra', emoji: '🍹', recipe: { tra_trai_cay: 120, duong: 15, cot_tac: 5, chunky_dau: 20, syrup_dau: 20, hat_no_cu_nang: 30, ly: 1, da: 180 } },
+  { id: 'tra-luu-do-thach-dua-l', name: 'Trà lựu đỏ thạch dừa (L)', price: 32000, category: 'tra', emoji: '🍹', recipe: { tra_trai_cay: 120, duong: 15, cot_tac: 5, syrup_luu: 30, thach_dua: 40, ly: 1, da: 180 } },
+  { id: 'tra-dao-l', name: 'Trà đào (L)', price: 30000, category: 'tra', emoji: '🍹', recipe: { tra_trai_cay: 120, duong: 15, syrup_dao: 20, sot_dao: 20, topping_dao: 3, ly: 1, da: 180 } },
+  { id: 'tra-lai-dac-thom-l', name: 'Trà lài đặc thơm (L)', price: 32000, category: 'tra', emoji: '🍹', recipe: { tra_trai_cay: 120, duong: 15, cot_tac: 5, syrup_thom: 20, sot_thom: 20, topping_thom: 5, ly: 1, da: 180 } },
+  { id: 'tra-nho-chuoi-ngoc-l', name: 'Trà nho chuối ngọc (L)', price: 35000, category: 'tra', emoji: '🍹', recipe: { tra_trai_cay: 120, duong: 25, cot_tac: 10, chunky_nho: 30, hat_no_cu_nang: 30, ly: 1, da: 180 } },
+  { id: 'tra-thanh-xuan-nhiet-doi-l', name: 'Trà thanh xuân nhiệt đới (L)', price: 37000, category: 'tra', emoji: '🍹', recipe: { tra_trai_cay: 120, duong: 15, syrup_dau: 40, syrup_chanh_day: 20, chanh_day: 1, hat_no_cu_nang: 30, ly: 1, da: 180 } },
+
+  // TRÀ SỮA
+  { id: 'luc-tra-sua-xoai-l', name: 'Lục trà sữa xoài (L)', price: 35000, category: 'milktea', emoji: '🧋', recipe: { sua: 30, tra_trai_cay: 120, duong: 10, bot_sua: 10, syrup_xoai: 5, sinh_to_xoai: 40, ly: 1, da: 180 } },
+  { id: 'luc-tra-sua-lai-l', name: 'Lục trà sữa lài (L)', price: 30000, category: 'milktea', emoji: '🧋', recipe: { sua: 40, tra_trai_cay: 120, duong: 10, bot_sua: 15, tran_chau_trang: 40, ly: 1, da: 180 } },
+  { id: 'nguyen-la-l', name: 'Nguyên lá (L)', price: 30000, category: 'milktea', emoji: '🧋', recipe: { sua: 40, nguyen_la: 120, duong: 10, bot_sua: 15, tran_chau_trang: 40, ly: 1, da: 180 } },
+  { id: 'nguyen-la-luc-tra-suong-sao-l', name: 'Nguyên lá / Lục trà sương sáo (L)', price: 32000, category: 'milktea', emoji: '🧋', recipe: { sua: 40, nguyen_la: 120, duong: 10, bot_sua: 15, suong_sao: 70, ly: 1, da: 180 } },
+  { id: 'nguyen-la-luc-tra-kem-pmd-l', name: 'Nguyên lá / Lục trà kem phô mai dẻo (L)', price: 37000, category: 'milktea', emoji: '🧋', recipe: { sua: 40, nguyen_la: 120, duong: 10, bot_sua: 15, tran_chau_trang: 40, kem_cheese: 50, ly: 1, da: 180 } },
+  { id: 'nguyen-la-luc-tra-kem-man-l', name: 'Nguyên lá / Lục trà kem mặn (L)', price: 35000, category: 'milktea', emoji: '🧋', recipe: { sua: 40, nguyen_la: 120, duong: 10, bot_sua: 15, tran_chau_trang: 40, kem_man: 40, ly: 1, da: 180 } },
+  { id: 'nguyen-la-luc-tra-kem-trung-l', name: 'Nguyên lá / Lục trà kem trứng (L)', price: 37000, category: 'milktea', emoji: '🧋', recipe: { sua: 40, nguyen_la: 120, duong: 10, bot_sua: 15, tran_chau_trang: 40, kem_trung: 50, ly: 1, da: 180 } },
+  { id: 'luc-tra-sua-lai-khoai-mon-l', name: 'Lục trà sữa lài khoai môn (L)', price: 35000, category: 'milktea', emoji: '🧋', recipe: { sua: 40, tra_trai_cay: 120, duong: 10, bot_sua: 15, khoai_mon_dam: 50, tran_chau_khoai_mon: 40, ly: 1, da: 180 } },
+  { id: 'khoai-mon-latte-l', name: 'Khoai môn latte (L)', price: 35000, category: 'milktea', emoji: '🧋', recipe: { sua: 40, suatuoi: 100, khoai_mon_dam: 50, tran_chau_khoai_mon: 40, ly: 1, da: 180 } },
+  { id: 'khoai-mon-oatside-l', name: 'Khoai môn Oatside (L)', price: 40000, category: 'milktea', emoji: '🧋', recipe: { sua: 40, oatside: 100, khoai_mon_dam: 50, tran_chau_khoai_mon: 40, ly: 1, da: 180 } },
+
+  // CACAO
+  { id: 'cacao-latte-m', name: 'Cacao latte (M)', price: 28000, category: 'cacao', emoji: '🍫', recipe: { sua: 30, suatuoi: 20, cacao: 7, bot_sua: 5, sot_choco: 5, nươc_soi: 40, ly: 1, da: 150 } },
+  { id: 'cacao-latte-l', name: 'Cacao latte (L)', price: 33000, category: 'cacao', emoji: '🍫', recipe: { sua: 45, suatuoi: 20, cacao: 10, bot_sua: 10, sot_choco: 10, nươc_soi: 70, ly: 1, da: 180 } },
+  { id: 'cacao-oatside-m', name: 'Cacao Oatside (M)', price: 35000, category: 'cacao', emoji: '🍫', recipe: { sua: 30, oatside: 80, cacao: 5, nươc_soi: 30, ly: 1, da: 150 } },
+  { id: 'cacao-oatside-l', name: 'Cacao Oatside (L)', price: 40000, category: 'cacao', emoji: '🍫', recipe: { sua: 45, oatside: 120, cacao: 7, nươc_soi: 40, ly: 1, da: 180 } },
+  { id: 'oreo-kem-deo-buon-me-m', name: 'Oreo kem dẻo buôn mê (M)', price: 32000, category: 'cacao', emoji: '🍫', recipe: { sua: 20, suatuoi: 100, vun_oreo: 20, kem_choco: 40, ly: 1, da: 150 } },
+  { id: 'oreo-kem-deo-buon-me-l', name: 'Oreo kem dẻo buôn mê (L)', price: 37000, category: 'cacao', emoji: '🍫', recipe: { sua: 30, suatuoi: 140, vun_oreo: 30, kem_choco: 50, ly: 1, da: 180 } },
+  { id: 'cacao-kem-man-m', name: 'Cacao kem mặn (M)', price: 32000, category: 'cacao', emoji: '🍫', recipe: { sua: 30, suatuoi: 20, cacao: 7, bot_sua: 5, sot_choco: 5, nươc_soi: 40, kem_man: 30, ly: 1, da: 150 } },
+  { id: 'cacao-kem-man-l', name: 'Cacao kem mặn (L)', price: 37000, category: 'cacao', emoji: '🍫', recipe: { sua: 45, suatuoi: 20, cacao: 10, bot_sua: 10, sot_choco: 10, nươc_soi: 70, kem_man: 40, ly: 1, da: 180 } },
+  { id: 'cacao-caramel-mh-m', name: 'Cacao caramel muối hồng (M)', price: 32000, category: 'cacao', emoji: '🍫', recipe: { sua: 20, suatuoi: 20, cacao: 7, bot_sua: 5, sot_choco: 5, nươc_soi: 40, caramel_muoi: 10, ly: 1, da: 150 } },
+  { id: 'cacao-caramel-mh-l', name: 'Cacao caramel muối hồng (L)', price: 37000, category: 'cacao', emoji: '🍫', recipe: { sua: 30, suatuoi: 20, cacao: 10, bot_sua: 10, sot_choco: 10, nươc_soi: 70, caramel_muoi: 15, ly: 1, da: 180 } },
+  { id: 'cacao-kem-trung-m', name: 'Cacao kem trứng (M)', price: 35000, category: 'cacao', emoji: '🍫', recipe: { sua: 30, suatuoi: 20, cacao: 7, bot_sua: 5, sot_choco: 5, nươc_soi: 40, kem_trung: 40, ly: 1, da: 150 } },
+  { id: 'cacao-kem-trung-l', name: 'Cacao kem trứng (L)', price: 40000, category: 'cacao', emoji: '🍫', recipe: { sua: 45, suatuoi: 20, cacao: 10, bot_sua: 10, sot_choco: 10, nươc_soi: 70, kem_trung: 50, ly: 1, da: 180 } },
+  { id: 'cacao-kem-deo-buon-me-m', name: 'Cacao kem dẻo buôn mê (M)', price: 32000, category: 'cacao', emoji: '🍫', recipe: { sua: 30, suatuoi: 20, cacao: 7, bot_sua: 5, sot_choco: 5, nươc_soi: 40, kem_choco: 40, ly: 1, da: 150 } },
+  { id: 'cacao-kem-deo-buon-me-l', name: 'Cacao kem dẻo buôn mê (L)', price: 37000, category: 'cacao', emoji: '🍫', recipe: { sua: 45, suatuoi: 20, cacao: 10, bot_sua: 10, sot_choco: 10, nươc_soi: 70, kem_choco: 50, ly: 1, da: 180 } },
+  { id: 'cacao-sua-gau-l', name: 'Cacao sữa gấu (L)', price: 35000, category: 'cacao', emoji: '🍫', recipe: { sua: 50, sua_gau: 1, cacao: 7, nươc_soi: 40, ly: 1, da: 180 } },
+  { id: 'cacao-kem-deo-phomai-m', name: 'Cacao kem dẻo phô mai (M)', price: 35000, category: 'cacao', emoji: '🍫', recipe: { sua: 30, suatuoi: 20, cacao: 7, bot_sua: 5, sot_choco: 5, nươc_soi: 40, kem_cheese: 40, ly: 1, da: 150 } }
 ];
 
 const DEFAULT_SHIFTS = [
@@ -181,8 +302,10 @@ const DEFAULT_SHIFTS = [
 
 const DEFAULT_CATEGORIES = [
   { id: 'cf', name: 'Cà phê' },
-  { id: 'tra', name: 'Trà' },
-  { id: 'milktea', name: 'Trà sữa' }
+  { id: 'tra', name: 'Trà trái cây' },
+  { id: 'milktea', name: 'Trà sữa' },
+  { id: 'matcha', name: 'Matcha' },
+  { id: 'cacao', name: 'Cacao' }
 ];
 
 async function initializeDatabase() {
@@ -248,7 +371,8 @@ app.post('/api/auth/login', async (req, res) => {
         username: user.username,
         name: user.name,
         role: user.role,
-        managerId: user.managerId
+        managerId: user.managerId,
+        avatar: user.avatar || ''
       }
     });
   } catch (err) {
@@ -608,6 +732,58 @@ app.post('/api/inventory/restock', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Lỗi nhập kho nguyên liệu', details: err.message });
+  }
+});
+
+// POST export ingredient
+app.post('/api/inventory/export', async (req, res) => {
+  try {
+    const { id, qty, reason } = req.body;
+    if (!id || qty === undefined || qty === null) {
+      return res.status(400).json({ error: 'Thiếu thông tin xuất kho' });
+    }
+
+    const exportQty = Number(qty);
+    if (isNaN(exportQty) || exportQty <= 0) {
+      return res.status(400).json({ error: 'Số lượng xuất kho phải lớn hơn 0' });
+    }
+
+    const TenantIngredient = getTenantModel(req.dbName, 'Ingredient', IngredientSchema);
+    const ingredient = await TenantIngredient.findOne({ id });
+    if (!ingredient) {
+      return res.status(404).json({ error: 'Không tìm thấy nguyên liệu' });
+    }
+
+    if (ingredient.stock < exportQty) {
+      return res.status(400).json({ error: `Số lượng xuất (${exportQty}) vượt quá tồn kho hiện tại (${ingredient.stock})` });
+    }
+
+    ingredient.stock -= exportQty;
+    await ingredient.save();
+
+    // Ghi nhận log hao hụt/xuất kho để thống kê trong báo cáo
+    const TenantWaste = getTenantModel(req.dbName, 'Waste', WasteSchema);
+    const userId = req.headers['x-user-id'];
+    const currentUser = await User.findOne({ id: userId });
+    const reportedBy = currentUser ? currentUser.name : 'Quản lý';
+    const cost = exportQty * ingredient.cost;
+
+    const newWaste = new TenantWaste({
+      id: 'HH-' + Math.floor(100000 + Math.random() * 900000).toString(),
+      timestamp: new Date().toISOString(),
+      ingredientId: id,
+      ingredientName: ingredient.name,
+      qty: exportQty,
+      unit: ingredient.unit,
+      cost: cost,
+      reason: reason || 'Xuất kho thủ công',
+      reportedBy: reportedBy
+    });
+    await newWaste.save();
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi xuất kho nguyên liệu', details: err.message });
   }
 });
 
@@ -978,6 +1154,34 @@ app.post('/api/users/update-qr', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Lỗi tải lên mã QR', details: err.message });
+  }
+});
+
+// POST update profile (avatar, name, password)
+app.post('/api/users/update-profile', async (req, res) => {
+  try {
+    const { id, name, password, avatar } = req.body;
+    const updateObj = {};
+    if (name !== undefined) updateObj.name = name.trim();
+    if (password !== undefined) updateObj.password = password;
+    if (avatar !== undefined) updateObj.avatar = avatar;
+
+    const updated = await User.findOneAndUpdate({ id }, { $set: updateObj }, { new: true });
+    if (!updated) return res.status(404).json({ error: 'Không tìm thấy người dùng' });
+
+    res.json({
+      success: true,
+      user: {
+        id: updated.id,
+        username: updated.username,
+        name: updated.name,
+        role: updated.role,
+        managerId: updated.managerId,
+        avatar: updated.avatar || ''
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi cập nhật thông tin cá nhân', details: err.message });
   }
 });
 

@@ -144,6 +144,25 @@ export class MainController {
     this.viewManager.showToast('Đã đăng xuất thành công', 'success');
   }
 
+  getActiveUser() {
+    return this.authModel.getCurrentUser();
+  }
+
+  async handleUpdateProfile(id, name, password, avatar) {
+    try {
+      const success = await this.db.updateProfile(id, name, password, avatar);
+      if (success) {
+        const user = this.authModel.getCurrentUser();
+        this.viewManager.updateHeader(user);
+        this.switchTab(this.activeTab); // Refresh current view
+        return true;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return false;
+  }
+
   isBypassLogin() {
     return this.authModel.isBypassLogin();
   }
@@ -276,6 +295,23 @@ export class MainController {
       const success = await this.inventoryModel.restock(ingId, qty, parsedCost);
       if (success && ing) {
         this.viewManager.showToast(`Đã nhập +${qty} ${ing.unit} vào kho cho ${ing.name}`, 'success');
+        return true;
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      this.viewManager.hideLoading();
+    }
+    return false;
+  }
+
+  async handleExportIngredient(ingId, qty, reason) {
+    this.viewManager.showLoading('Đang xử lý xuất kho...');
+    try {
+      const ing = this.inventoryModel.getIngredient(ingId);
+      const success = await this.inventoryModel.exportIngredient(ingId, qty, reason);
+      if (success && ing) {
+        this.viewManager.showToast(`Đã xuất -${qty} ${ing.unit} từ kho cho ${ing.name}`, 'success');
         return true;
       }
     } catch (e) {
