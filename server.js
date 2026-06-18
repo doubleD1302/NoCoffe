@@ -705,7 +705,8 @@ app.post('/api/orders/checkout', async (req, res) => {
       if (item.recipe) {
         for (const ingId of Object.keys(item.recipe)) {
           let qtyNeeded = item.recipe[ingId];
-          if (item.size === 'L' && ['cf', 'sua', 'suatuoi', 'duong'].includes(ingId)) {
+          const isLVariant = item.id.endsWith('-l') || item.name.endsWith('(L)');
+          if (item.size === 'L' && !isLVariant && ['cf', 'sua', 'suatuoi', 'duong'].includes(ingId)) {
             qtyNeeded = Math.ceil(qtyNeeded * 1.3);
           }
           const totalDeduction = qtyNeeded * item.qty;

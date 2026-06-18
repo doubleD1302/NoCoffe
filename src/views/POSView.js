@@ -1,5 +1,19 @@
 // POSView.js - Renders Point of Sale Cashier system using Bootstrap Icons & Base64 Images
 
+const parseDrinkName = (name) => {
+  const match = name.match(/^(.*?)\s*\(([M|L])\)$/i);
+  if (match) {
+    return {
+      baseName: match[1].trim(),
+      size: match[2].toUpperCase()
+    };
+  }
+  return {
+    baseName: name.trim(),
+    size: null
+  };
+};
+
 export class POSView {
   constructor(container, controller) {
     this.container = container;
@@ -94,36 +108,90 @@ export class POSView {
       return;
     }
 
-    grid.innerHTML = filtered.map(item => {
-      // Check for low stock warnings
-      let hasLowStock = false;
-      if (item.recipe) {
-        // Handle MongoDB Map/Object conversions safely
-        const recipeObj = typeof item.recipe.entries === 'function' ? Object.fromEntries(item.recipe) : item.recipe;
-        Object.keys(recipeObj).forEach(ingId => {
-          const ing = inventory.getIngredient(ingId);
-          if (ing && ing.stock <= ing.minStock) {
-            hasLowStock = true;
-          }
-        });
+    // Group items by base name
+    const groupedMenu = [];
+    filtered.forEach(item => {
+      const { baseName, size } = parseDrinkName(item.name);
+      let group = groupedMenu.find(g => g.name === baseName);
+      if (!group) {
+        group = {
+          name: baseName,
+          category: item.category,
+          emoji: item.emoji || '☕',
+          image: item.image || '',
+          variants: []
+        };
+        groupedMenu.push(group);
       }
+      if (item.image && !group.image) {
+        group.image = item.image;
+      }
+      if (item.emoji && item.emoji !== '☕' && group.emoji === '☕') {
+        group.emoji = item.emoji;
+      }
+      group.variants.push({
+        id: item.id,
+        size: size || 'M',
+        price: item.price,
+        recipe: item.recipe,
+        rawItem: item
+      });
+    });
+
+    grid.innerHTML = groupedMenu.map((group, index) => {
+      // Sort variants: M first, then L
+      group.variants.sort((a, b) => {
+        if (a.size === 'M' && b.size === 'L') return -1;
+        if (a.size === 'L' && b.size === 'M') return 1;
+        return 0;
+      });
+
+      // Warning if any variant has low stock
+      let hasLowStock = false;
+      group.variants.forEach(variant => {
+        if (variant.recipe) {
+          const recipeObj = typeof variant.recipe.entries === 'function' ? Object.fromEntries(variant.recipe) : variant.recipe;
+          Object.keys(recipeObj).forEach(ingId => {
+            const ing = inventory.getIngredient(ingId);
+            if (ing && ing.stock <= ing.minStock) {
+              hasLowStock = true;
+            }
+          });
+        }
+      });
 
       const warningBadge = hasLowStock 
         ? `<div class="menu-card-warning" title="Nguyên liệu sắp hết"><i class="bi bi-exclamation-triangle-fill"></i></div>` 
         : '';
 
-      // Check if image exists, otherwise draw emoji
-      const thumbnailHtml = item.image 
-        ? `<img src="${item.image}" style="width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-sm);" alt="${item.name}">`
-        : `<span style="font-size: 38px;">${item.emoji}</span>`;
+      // Check category placeholder gradient
+      let gradientClass = 'placeholder-gradient-default';
+      if (group.category === 'cf') gradientClass = 'placeholder-gradient-cf';
+      else if (group.category === 'tra') gradientClass = 'placeholder-gradient-tra';
+      else if (group.category === 'milktea') gradientClass = 'placeholder-gradient-milktea';
+      else if (group.category === 'matcha') gradientClass = 'placeholder-gradient-matcha';
+      else if (group.category === 'cacao') gradientClass = 'placeholder-gradient-cacao';
+
+      // Check if image exists, otherwise draw emoji on gradient
+      const thumbnailHtml = group.image 
+        ? `<img src="${group.image}" style="width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-sm);" alt="${group.name}">`
+        : `<div class="menu-card-thumbnail ${gradientClass}" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;"><span class="emoji-span">${group.emoji}</span></div>`;
+
+      // Price range text
+      const prices = group.variants.map(v => v.price);
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      const priceText = minPrice === maxPrice 
+        ? `${minPrice.toLocaleString('vi-VN')}đ` 
+        : `${minPrice.toLocaleString('vi-VN')}đ - ${maxPrice.toLocaleString('vi-VN')}đ`;
 
       return `
-        <div class="menu-card" data-id="${item.id}">
+        <div class="menu-card" data-index="${index}">
           ${warningBadge}
           <div class="menu-card-thumbnail">${thumbnailHtml}</div>
           <div class="menu-card-info">
-            <span class="menu-card-name">${item.name}</span>
-            <span class="menu-card-price">${item.price.toLocaleString('vi-VN')}đ</span>
+            <span class="menu-card-name">${group.name}</span>
+            <span class="menu-card-price">${priceText}</span>
           </div>
         </div>
       `;
@@ -131,8 +199,9 @@ export class POSView {
 
     grid.querySelectorAll('.menu-card').forEach(card => {
       card.addEventListener('click', () => {
-        const id = card.getAttribute('data-id');
-        this.openModifierModal(id);
+        const index = Number(card.getAttribute('data-index'));
+        const group = groupedMenu[index];
+        this.openModifierModal(group);
       });
     });
   }
@@ -154,26 +223,69 @@ export class POSView {
     }
   }
 
-  openModifierModal(drinkId) {
-    const drink = this.controller.getMenuById(drinkId);
-    if (!drink) return;
+  openModifierModal(group) {
+    if (!group || !group.variants || group.variants.length === 0) return;
 
     const mount = this.container.querySelector('#pos-modals-mount');
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
+    
+    // Sort variants: M first, then L
+    group.variants.sort((a, b) => {
+      if (a.size === 'M' && b.size === 'L') return -1;
+      if (a.size === 'L' && b.size === 'M') return 1;
+      return 0;
+    });
+
+    // Gather distinct sizes
+    const availableSizes = group.variants.map(v => v.size);
+    const hasMVariant = availableSizes.includes('M') || availableSizes.includes(null);
+    const hasLVariant = availableSizes.includes('L');
+
+    let sizePillsHtml = '';
+    if (hasMVariant && hasLVariant) {
+      sizePillsHtml = `
+        <button class="option-pill-btn active" data-size="M">Size M</button>
+        <button class="option-pill-btn" data-size="L">Size L</button>
+      `;
+    } else if (hasMVariant && !hasLVariant) {
+      sizePillsHtml = `
+        <button class="option-pill-btn active" data-size="M">Size M (Mặc định)</button>
+        <button class="option-pill-btn" data-size="L">Size L (+5,000đ)</button>
+      `;
+    } else if (!hasMVariant && hasLVariant) {
+      sizePillsHtml = `
+        <button class="option-pill-btn active" data-size="L">Size L</button>
+      `;
+    } else {
+      const defSize = group.variants[0].size || 'M';
+      sizePillsHtml = `
+        <button class="option-pill-btn active" data-size="${defSize}">Size ${defSize}</button>
+      `;
+    }
+
     overlay.innerHTML = `
       <div class="modal-content">
         <div class="drawer-handle"></div>
         <div class="modal-header">
-          <h3>Cấu hình: ${drink.name}</h3>
+          <h3>Cấu hình: ${group.name}</h3>
           <button class="btn-icon-small btn-close-modal">×</button>
         </div>
         
+        <div style="display: flex; gap: 14px; align-items: center; background: var(--brand-pink-soft); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--brand-pink-border); margin-bottom: 16px;">
+          <div style="width: 50px; height: 50px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; overflow: hidden; background: white; flex-shrink: 0;">
+            ${group.image ? `<img src="${group.image}" style="width: 100%; height: 100%; object-fit: cover;">` : `<span style="font-size: 28px;">${group.emoji}</span>`}
+          </div>
+          <div>
+            <h4 style="font-family: var(--font-heading); font-size: 15px; font-weight: 700; color: var(--primary-dark); margin: 0;">${group.name}</h4>
+            <div id="modifier-price-display" style="font-size: 14px; font-weight: 800; color: var(--brand-pink-dark); margin-top: 2px;">0đ</div>
+          </div>
+        </div>
+
         <div class="option-section">
           <div class="option-title">Kích thước (Size)</div>
           <div class="option-pills" id="modifier-size">
-            <button class="option-pill-btn active" data-val="M">Size M (Mặc định)</button>
-            <button class="option-pill-btn" data-val="L">Size L (+5,000đ)</button>
+            ${sizePillsHtml}
           </div>
         </div>
 
@@ -202,6 +314,16 @@ export class POSView {
           <input type="text" id="modifier-notes" class="input-field" placeholder="Ví dụ: Ít sữa, nhiều đá, v.v.">
         </div>
 
+        <!-- Recipe Display Section -->
+        <div class="recipe-preview-box">
+          <div class="recipe-preview-title">
+            <i class="bi bi-receipt-cutoff"></i> Công thức pha chế
+          </div>
+          <div class="recipe-preview-list" id="modifier-recipe-list">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
         <button class="btn-primary" id="btn-add-to-cart-confirm" style="width: 100%; height: 44px; margin-top: 10px;">
           <i class="bi bi-plus-lg"></i> Thêm Vào Giỏ Hàng
         </button>
@@ -210,12 +332,67 @@ export class POSView {
 
     mount.appendChild(overlay);
 
+    const updateModalState = () => {
+      const activeSizeBtn = overlay.querySelector('#modifier-size .active');
+      const selectedSize = activeSizeBtn ? activeSizeBtn.getAttribute('data-size') : 'M';
+      
+      let variantDoc = null;
+      let computedPrice = 0;
+      
+      const exactVariant = group.variants.find(v => v.size === selectedSize);
+      if (exactVariant) {
+        variantDoc = exactVariant;
+        computedPrice = exactVariant.price;
+      } else {
+        variantDoc = group.variants[0];
+        const offset = selectedSize === 'L' ? 5000 : 0;
+        computedPrice = variantDoc.price + offset;
+      }
+
+      overlay.querySelector('#modifier-price-display').innerText = computedPrice.toLocaleString('vi-VN') + 'đ';
+
+      const recipeListContainer = overlay.querySelector('#modifier-recipe-list');
+      const inventory = this.controller.getInventoryModel();
+      
+      if (!variantDoc.recipe || Object.keys(variantDoc.recipe).length === 0) {
+        recipeListContainer.innerHTML = `<div style="font-size: 11px; color: var(--text-light); text-align: center;">Chưa cấu hình công thức cho size này.</div>`;
+      } else {
+        const recipeObj = typeof variantDoc.recipe.entries === 'function' ? Object.fromEntries(variantDoc.recipe) : variantDoc.recipe;
+        const items = [];
+        
+        Object.keys(recipeObj).forEach(ingId => {
+          let qty = recipeObj[ingId];
+          const ing = inventory.getIngredient(ingId);
+          if (ing && qty > 0) {
+            const isFellBackToM = !exactVariant && selectedSize === 'L';
+            if (isFellBackToM && ['cf', 'sua', 'suatuoi', 'duong'].includes(ingId)) {
+              qty = Math.ceil(qty * 1.3);
+            }
+            items.push(`
+              <div class="recipe-preview-item">
+                <span>${ing.name}</span>
+                <strong>${qty} ${ing.unit}</strong>
+              </div>
+            `);
+          }
+        });
+        
+        recipeListContainer.innerHTML = items.length > 0 
+          ? items.join('') 
+          : `<div style="font-size: 11px; color: var(--text-light); text-align: center;">Chưa cấu hình công thức cho size này.</div>`;
+      }
+    };
+
     const setupPills = (containerId) => {
       const pContainer = overlay.querySelector('#' + containerId);
       pContainer.querySelectorAll('.option-pill-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           pContainer.querySelectorAll('.option-pill-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
+          
+          if (containerId === 'modifier-size') {
+            updateModalState();
+          }
         });
       });
     };
@@ -223,6 +400,8 @@ export class POSView {
     setupPills('modifier-size');
     setupPills('modifier-sugar');
     setupPills('modifier-ice');
+
+    updateModalState();
 
     const closeModal = () => {
       overlay.style.opacity = '0';
@@ -237,12 +416,21 @@ export class POSView {
     });
 
     overlay.querySelector('#btn-add-to-cart-confirm').addEventListener('click', () => {
-      const size = overlay.querySelector('#modifier-size .active').getAttribute('data-val');
+      const activeSizeBtn = overlay.querySelector('#modifier-size .active');
+      const size = activeSizeBtn ? activeSizeBtn.getAttribute('data-size') : 'M';
       const sugar = overlay.querySelector('#modifier-sugar .active').getAttribute('data-val');
       const ice = overlay.querySelector('#modifier-ice .active').getAttribute('data-val');
       const notes = overlay.querySelector('#modifier-notes').value.trim();
 
-      this.controller.addToCart(drink, size, sugar, ice, notes);
+      let drinkDoc = null;
+      const exactVariant = group.variants.find(v => v.size === size);
+      if (exactVariant) {
+        drinkDoc = exactVariant.rawItem;
+      } else {
+        drinkDoc = group.variants[0].rawItem;
+      }
+
+      this.controller.addToCart(drinkDoc, size, sugar, ice, notes);
       this.updateCartTrigger();
       closeModal();
     });
@@ -258,10 +446,11 @@ export class POSView {
     
     const itemsHtml = cart.map((item, index) => {
       const descDetails = `Size ${item.size} • Đường ${item.sugar} • Đá ${item.ice}${item.notes ? ` • ${item.notes}` : ''}`;
+      const { baseName } = parseDrinkName(item.name);
       return `
         <div class="cart-item-row">
           <div class="cart-item-desc">
-            <div class="cart-item-name">${item.name}</div>
+            <div class="cart-item-name">${baseName}</div>
             <div class="cart-item-details">${descDetails}</div>
             <div style="font-size: 11px; font-weight: 700; color: var(--accent-dark); margin-top: 2px;">
               ${(item.price * item.qty).toLocaleString('vi-VN')}đ

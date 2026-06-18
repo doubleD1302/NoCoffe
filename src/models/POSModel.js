@@ -11,7 +11,8 @@ export class POSModel {
   }
 
   addToCart(drink, size, sugar, ice, notes) {
-    const sizePriceOffset = size === 'L' ? 5000 : 0;
+    const isLVariant = drink.id.endsWith('-l') || drink.name.endsWith('(L)');
+    const sizePriceOffset = (size === 'L' && !isLVariant) ? 5000 : 0;
     const unitPrice = drink.price + sizePriceOffset;
 
     // Check if duplicate item exists in cart with same configurations
@@ -88,7 +89,8 @@ export class POSModel {
       if (item.recipe) {
         Object.keys(item.recipe).forEach(ingId => {
           let qtyNeeded = item.recipe[ingId];
-          if (item.size === 'L' && ['cf', 'sua', 'suatuoi', 'duong'].includes(ingId)) {
+          const isLVariant = item.id.endsWith('-l') || item.name.endsWith('(L)');
+          if (item.size === 'L' && !isLVariant && ['cf', 'sua', 'suatuoi', 'duong'].includes(ingId)) {
             qtyNeeded = Math.ceil(qtyNeeded * 1.3);
           }
           const ing = inventoryModel.getIngredient(ingId);

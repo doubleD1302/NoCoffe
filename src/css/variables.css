@@ -11,6 +11,12 @@
   --accent-light: hsl(38, 45%, 85%);                   /* #f0dec3 - Sand */
   --accent-dark: hsl(38, 60%, 38%);                    /* #996924 - Toasted Caramel */
   
+  /* Brand Pink accents from Nơ Coffee Logo */
+  --brand-pink: #f39fa2;                               /* Pastel Pink from logo */
+  --brand-pink-soft: #fef0f0;                          /* Extremely soft pink for backgrounds */
+  --brand-pink-dark: #c4575a;                          /* Deeper rose pink for text */
+  --brand-pink-border: rgba(243, 159, 162, 0.25);
+  
   /* Status Colors */
   --success: hsl(142, 55%, 42%);                       /* Matcha green */
   --success-soft: hsl(142, 40%, 94%);
