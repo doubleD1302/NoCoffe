@@ -76,6 +76,9 @@ export class Database {
       // Preserve active user locally
       this.data.config.activeUser = activeUser;
       console.log('🍃 Consolidated MongoDB state synced locally!');
+      
+      // Dispatch custom event to notify controller/views of data changes
+      document.dispatchEvent(new CustomEvent('database-synced', { detail: this.data }));
     } catch (e) {
       console.error('Lỗi khi tải Database từ máy chủ:', e);
     }
@@ -115,6 +118,24 @@ export class Database {
       }
     } catch (e) {
       console.error(e);
+    }
+    return false;
+  }
+
+  // POST sync default menu
+  async syncDefaultMenu(seedInventory) {
+    try {
+      const res = await fetch('/api/menu/sync-default', {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ seedInventory })
+      });
+      if (res.ok) {
+        await this.fetchDb();
+        return true;
+      }
+    } catch (e) {
+      console.error('Lỗi khi đồng bộ menu mặc định:', e);
     }
     return false;
   }
@@ -497,12 +518,12 @@ export class Database {
   }
 
   // POST update Profile
-  async updateProfile(id, name, password, avatar) {
+  async updateProfile(id, name, password, avatar, qrCode) {
     try {
       const res = await fetch('/api/users/update-profile', {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify({ id, name, password, avatar })
+        body: JSON.stringify({ id, name, password, avatar, qrCode })
       });
       if (res.ok) {
         const data = await res.json();

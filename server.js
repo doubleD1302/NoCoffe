@@ -315,6 +315,48 @@ async function initializeDatabase() {
     await Config.create({ bypassLogin: false, activeUser: null });
     console.log('🌱 Default database initialized with Admin user!');
   }
+
+  // Check if menu storage user exists
+  const menuUser = await User.findOne({ username: 'menu' });
+  if (!menuUser) {
+    const defaultStoreId = 'usr-default-store';
+    await User.create({
+      id: defaultStoreId,
+      username: 'menu',
+      password: 'menu',
+      name: 'Lưu Trữ Menu Mặc Định',
+      role: 'manager',
+      managerId: null,
+      hourlyWage: 25000,
+      salaryCycle: 'weekly',
+      salaryStartDate: new Date().toISOString().split('T')[0]
+    });
+    console.log('🌱 Default Menu storage manager user created!');
+  }
+
+  // Seed default menu storage database tables if empty
+  const defaultStoreDbName = 'no-coffee-usr-default-store';
+  const StoreIngredient = getTenantModel(defaultStoreDbName, 'Ingredient', IngredientSchema);
+  const StoreMenuItem = getTenantModel(defaultStoreDbName, 'MenuItem', MenuItemSchema);
+  const StoreShift = getTenantModel(defaultStoreDbName, 'Shift', ShiftSchema);
+  const StoreCategory = getTenantModel(defaultStoreDbName, 'MenuCategory', MenuCategorySchema);
+  const StoreConfig = getTenantModel(defaultStoreDbName, 'Config', ConfigSchema);
+
+  const storeMenuCount = await StoreMenuItem.countDocuments();
+  if (storeMenuCount === 0) {
+    await StoreIngredient.deleteMany({});
+    await StoreMenuItem.deleteMany({});
+    await StoreShift.deleteMany({});
+    await StoreCategory.deleteMany({});
+    await StoreConfig.deleteMany({});
+
+    await StoreIngredient.insertMany(DEFAULT_INGREDIENTS);
+    await StoreMenuItem.insertMany(DEFAULT_MENU);
+    await StoreShift.insertMany(DEFAULT_SHIFTS);
+    await StoreCategory.insertMany(DEFAULT_CATEGORIES);
+    await StoreConfig.create({ bypassLogin: false, activeUser: null });
+    console.log('🌱 Seeding database for default-store completed successfully!');
+  }
 }
 
 // Ensure database has default data
@@ -879,6 +921,88 @@ app.post('/api/waste', async (req, res) => {
   }
 });
 
+// POST sync default menu
+app.post('/api/menu/sync-default', async (req, res) => {
+  try {
+    const { seedInventory } = req.body;
+    
+    // Target DB Models
+    const TenantMenuItem = getTenantModel(req.dbName, 'MenuItem', MenuItemSchema);
+    const TenantCategory = getTenantModel(req.dbName, 'MenuCategory', MenuCategorySchema);
+    const TenantIngredient = getTenantModel(req.dbName, 'Ingredient', IngredientSchema);
+    const TenantWaste = getTenantModel(req.dbName, 'Waste', WasteSchema);
+    
+    // Clear existing data
+    await TenantMenuItem.deleteMany({});
+    await TenantCategory.deleteMany({});
+    await TenantIngredient.deleteMany({});
+    
+    // Source DB Models (no-coffee-usr-default-store)
+    const defaultStoreDbName = 'no-coffee-usr-default-store';
+    const StoreMenuItem = getTenantModel(defaultStoreDbName, 'MenuItem', MenuItemSchema);
+    const StoreCategory = getTenantModel(defaultStoreDbName, 'MenuCategory', MenuCategorySchema);
+    const StoreIngredient = getTenantModel(defaultStoreDbName, 'Ingredient', IngredientSchema);
+    
+    // Fetch source data
+    const sourceMenu = await StoreMenuItem.find({});
+    const sourceCategories = await StoreCategory.find({});
+    const sourceIngredients = await StoreIngredient.find({});
+    
+    // Insert Menu and Categories
+    if (sourceMenu.length > 0) {
+      await TenantMenuItem.insertMany(sourceMenu.map(m => ({
+        id: m.id,
+        name: m.name,
+        price: m.price,
+        category: m.category,
+        emoji: m.emoji,
+        recipe: m.recipe,
+        image: m.image
+      })));
+    }
+    
+    if (sourceCategories.length > 0) {
+      await TenantCategory.insertMany(sourceCategories.map(c => ({
+        id: c.id,
+        name: c.name
+      })));
+    }
+    
+    // Process Ingredients
+    if (sourceIngredients.length > 0) {
+      const ingredientsToInsert = sourceIngredients.map(ing => ({
+        id: ing.id,
+        name: ing.name,
+        unit: ing.unit,
+        cost: ing.cost,
+        minStock: ing.minStock,
+        stock: seedInventory ? ing.stock : 0
+      }));
+      await TenantIngredient.insertMany(ingredientsToInsert);
+    }
+    
+    // Record Waste log if seeding inventory
+    if (seedInventory) {
+      const newWaste = new TenantWaste({
+        id: 'HH-' + Math.floor(100000 + Math.random() * 900000).toString(),
+        timestamp: new Date().toISOString(),
+        ingredientId: 'system',
+        ingredientName: 'Khởi tạo kho',
+        qty: 0,
+        unit: 'lần',
+        cost: 0,
+        reason: 'test- xin hãy thay đổi số liệu kho cho trùng khới',
+        reportedBy: 'Hệ thống'
+      });
+      await newWaste.save();
+    }
+    
+    res.json({ success: true, message: 'Đồng bộ menu mặc định thành công!' });
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi đồng bộ menu mặc định', details: err.message });
+  }
+});
+
 // POST menu update
 app.post('/api/menu/update', async (req, res) => {
   try {
@@ -1169,14 +1293,15 @@ app.post('/api/users/update-qr', async (req, res) => {
   }
 });
 
-// POST update profile (avatar, name, password)
+// POST update profile (avatar, name, password, qrCode)
 app.post('/api/users/update-profile', async (req, res) => {
   try {
-    const { id, name, password, avatar } = req.body;
+    const { id, name, password, avatar, qrCode } = req.body;
     const updateObj = {};
     if (name !== undefined) updateObj.name = name.trim();
     if (password !== undefined) updateObj.password = password;
     if (avatar !== undefined) updateObj.avatar = avatar;
+    if (qrCode !== undefined) updateObj.qrCode = qrCode;
 
     const updated = await User.findOneAndUpdate({ id }, { $set: updateObj }, { new: true });
     if (!updated) return res.status(404).json({ error: 'Không tìm thấy người dùng' });
@@ -1189,7 +1314,8 @@ app.post('/api/users/update-profile', async (req, res) => {
         name: updated.name,
         role: updated.role,
         managerId: updated.managerId,
-        avatar: updated.avatar || ''
+        avatar: updated.avatar || '',
+        qrCode: updated.qrCode || ''
       }
     });
   } catch (err) {

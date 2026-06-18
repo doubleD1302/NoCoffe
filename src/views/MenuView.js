@@ -1,5 +1,17 @@
 // MenuView.js - Renders and manages Drink Menu and Recipe Configurations with Base64 Uploader & Dynamic Recipe rows
 
+const cleanName = (name) => {
+  if (!name) return '';
+  const parts = name.split('-');
+  const cleanedParts = parts.map(part => part.trim()).filter(part => {
+    const hasChinese = /[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]/.test(part);
+    return !hasChinese;
+  });
+  let result = cleanedParts.join(' - ').trim();
+  result = result.replace(/[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]/g, '').trim();
+  return result;
+};
+
 export class MenuView {
   constructor(container, controller) {
     this.container = container;
@@ -12,18 +24,33 @@ export class MenuView {
 
   render() {
     this.container.innerHTML = `
-      <div class="view-title-row">
-        <h2>Quản Lý Menu & Công Thức</h2>
-        <button class="btn-primary" id="btn-open-add-menu" style="padding: 6px 12px; font-size: 13px;"><i class="bi bi-plus-circle-fill"></i> Thêm món</button>
-      </div>
+      <div class="pos-layout">
+        <!-- Category Sidebar -->
+        <div class="category-tabs" id="menu-category-tabs">
+          <!-- Rendered dynamically -->
+        </div>
 
-      <!-- Scrollable list of products and recipes -->
-      <div class="menu-list" id="menu-items-mount" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 80px;"></div>
+        <!-- Catalog Area -->
+        <div class="menu-grid-container" style="flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden;">
+          <div class="view-title-row" style="padding: 16px 14px 0 14px;">
+            <h2>Quản Lý Thực Đơn</h2>
+            <button class="btn-primary" id="btn-open-add-menu" style="padding: 6px 12px; font-size: 13px;"><i class="bi bi-plus-circle-fill"></i> Thêm món</button>
+          </div>
+
+          <!-- Drink Grid (Reusing POS CSS classes!) -->
+          <div class="menu-grid" id="menu-items-mount"></div>
+        </div>
+      </div>
 
       <!-- Modals mount layer -->
       <div id="menu-modals-mount"></div>
     `;
 
+    if (!this.activeCategory) {
+      this.activeCategory = 'all';
+    }
+
+    this.renderCategoryTabs();
     this.renderMenuList();
     this.initEvents();
   }
@@ -34,22 +61,77 @@ export class MenuView {
     });
   }
 
+  renderCategoryTabs() {
+    const tabsContainer = this.container.querySelector('#menu-category-tabs');
+    if (!tabsContainer) return;
+
+    const categories = this.controller.db.getTable('categories');
+
+    const getIconClass = (catId) => {
+      if (catId === 'all') return 'bi-cup-straw';
+      if (catId === 'cf') return 'bi-cup-hot-fill';
+      if (catId === 'tra') return 'bi-cup-straw';
+      if (catId === 'milktea') return 'bi-cup-straw';
+      if (catId === 'matcha') return 'bi-leaf-fill';
+      if (catId === 'cacao') return 'bi-cup-hot';
+      return 'bi-tag-fill';
+    };
+
+    const getFriendlyCategoryName = (catId, catName) => {
+      if (catId === 'all') return 'TẤT CẢ MÓN';
+      if (catId === 'cf') return 'CÀ PHÊ';
+      if (catId === 'tra') return 'TRÀ TRÁI CÂY';
+      if (catId === 'milktea') return 'TRÀ SỮA';
+      if (catId === 'matcha') return 'MATCHA';
+      if (catId === 'cacao') return 'CACAO';
+      return cleanName(catName).toUpperCase();
+    };
+
+    const buttons = [
+      `<button class="category-tab ${this.activeCategory === 'all' ? 'active' : ''}" data-category="all">
+        <i class="bi ${getIconClass('all')}"></i>
+        <span>${getFriendlyCategoryName('all', 'Tất cả')}</span>
+      </button>`,
+      ...categories.map(cat => `
+        <button class="category-tab ${this.activeCategory === cat.id ? 'active' : ''}" data-category="${cat.id}">
+          <i class="bi ${getIconClass(cat.id)}"></i>
+          <span>${getFriendlyCategoryName(cat.id, cat.name)}</span>
+        </button>
+      `)
+    ];
+
+    tabsContainer.innerHTML = buttons.join('');
+
+    // Wire events
+    tabsContainer.querySelectorAll('.category-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabsContainer.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        this.activeCategory = tab.getAttribute('data-category');
+        this.renderMenuList();
+      });
+    });
+  }
+
   renderMenuList() {
     const mount = this.container.querySelector('#menu-items-mount');
     const menu = this.controller.getMenuModel().getMenu();
     const inventory = this.controller.getInventoryModel();
     const ingredients = inventory.getIngredients();
 
-    if (menu.length === 0) {
-      mount.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px;"><i class="bi bi-journal-x"></i> Menu chưa có món nào.</div>`;
+    const filtered = menu.filter(drink => 
+      this.activeCategory === 'all' || drink.category === this.activeCategory
+    );
+
+    if (filtered.length === 0) {
+      mount.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px 0;"><i class="bi bi-journal-x"></i> Không có món nào trong nhóm này.</div>`;
       return;
     }
 
-    mount.innerHTML = menu.map(drink => {
+    mount.innerHTML = filtered.map(drink => {
       // Build recipe summary text
       const recipeItems = [];
       if (drink.recipe) {
-        // Safe check for MongoDB map conversion
         const recipeObj = typeof drink.recipe.entries === 'function' ? Object.fromEntries(drink.recipe) : drink.recipe;
         Object.keys(recipeObj).forEach(ingId => {
           const qty = recipeObj[ingId];
@@ -64,32 +146,33 @@ export class MenuView {
         ? recipeItems.join(' • ') 
         : '<span style="color: var(--danger);">Chưa cấu hình công thức!</span>';
 
+      // Check category placeholder gradient
+      let gradientClass = 'placeholder-gradient-default';
+      if (drink.category === 'cf') gradientClass = 'placeholder-gradient-cf';
+      else if (drink.category === 'tra') gradientClass = 'placeholder-gradient-tra';
+      else if (drink.category === 'milktea') gradientClass = 'placeholder-gradient-milktea';
+      else if (drink.category === 'matcha') gradientClass = 'placeholder-gradient-matcha';
+      else if (drink.category === 'cacao') gradientClass = 'placeholder-gradient-cacao';
+
       // Check if image exists, otherwise draw emoji
       const thumbnailHtml = drink.image 
-        ? `<img src="${drink.image}" style="width: 44px; height: 44px; object-fit: cover; border-radius: var(--radius-sm);" alt="${drink.name}">`
-        : `<span style="font-size: 24px;">${drink.emoji}</span>`;
+        ? `<img src="${drink.image}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;" alt="${drink.name}">`
+        : `<div class="menu-card-thumbnail ${gradientClass}" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border-radius: 12px;"><span class="emoji-span">${drink.emoji}</span></div>`;
 
       return `
-        <div class="menu-config-item" style="flex-direction: column; align-items: stretch; gap: 8px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
-              <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: var(--primary-soft); border-radius: var(--radius-sm); overflow: hidden;">
-                ${thumbnailHtml}
-              </div>
-              <div>
-                <strong style="color: var(--primary-dark); font-size: 15px;">${drink.name}</strong>
-                <div style="font-size: 13px; font-weight: 700; color: var(--accent-dark);">${drink.price.toLocaleString('vi-VN')}đ</div>
-              </div>
-            </div>
+        <div class="menu-card" style="cursor: default;">
+          <div class="menu-card-thumbnail">${thumbnailHtml}</div>
+          <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; width: 100%;">
+            <span class="menu-card-name" style="height: auto; min-height: 36px; margin-bottom: 2px;">${cleanName(drink.name)}</span>
+            <span class="menu-card-price" style="margin-bottom: 8px;">${drink.price.toLocaleString('vi-VN')} <span style="text-decoration: underline;">đ</span></span>
             
-            <div style="display: flex; gap: 6px;">
-              <button class="btn-secondary btn-edit-recipe" data-id="${drink.id}" style="padding: 6px 12px; font-size: 11px;"><i class="bi bi-pencil"></i> Sửa</button>
-              <button class="btn-danger btn-delete-menu-item" data-id="${drink.id}" style="padding: 6px 8px; font-size: 11px;"><i class="bi bi-trash"></i></button>
+            <div style="font-size: 10px; color: var(--text-muted); background: var(--primary-soft); padding: 6px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); line-height: 1.4; margin-bottom: 8px; max-height: 50px; overflow-y: auto; text-align: left;">
+              <strong>Định lượng:</strong> ${recipeSummary}
             </div>
           </div>
-
-          <div style="font-size: 11px; color: var(--text-muted); background: var(--primary-soft); padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); line-height: 1.6;">
-            <strong>Định lượng:</strong> ${recipeSummary}
+          <div style="display: flex; gap: 6px; justify-content: flex-end; width: 100%; border-top: 1px dashed var(--border-color); padding-top: 8px;">
+            <button class="btn-secondary btn-edit-recipe" data-id="${drink.id}" style="padding: 5px 10px; font-size: 11px; height: auto; display: flex; align-items: center; gap: 4px;"><i class="bi bi-pencil-square"></i> Sửa</button>
+            <button class="btn-danger btn-delete-menu-item" data-id="${drink.id}" style="padding: 5px 8px; font-size: 11px; height: auto; background: var(--danger); border-color: var(--danger); display: flex; align-items: center; justify-content: center;"><i class="bi bi-trash-fill"></i></button>
           </div>
         </div>
       `;
@@ -135,7 +218,7 @@ export class MenuView {
       <div class="modal-content" style="max-height: 90%; width: 95%;">
         <div class="drawer-handle"></div>
         <div class="modal-header">
-          <h3>Cấu hình: ${drink.name}</h3>
+          <h3>Cấu hình: ${cleanName(drink.name)}</h3>
           <button class="btn-icon-small btn-close-modal">×</button>
         </div>
 

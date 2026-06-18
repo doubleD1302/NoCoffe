@@ -1,5 +1,17 @@
 // POSView.js - Renders Point of Sale Cashier system using Bootstrap Icons & Base64 Images
 
+const cleanName = (name) => {
+  if (!name) return '';
+  const parts = name.split('-');
+  const cleanedParts = parts.map(part => part.trim()).filter(part => {
+    const hasChinese = /[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]/.test(part);
+    return !hasChinese;
+  });
+  let result = cleanedParts.join(' - ').trim();
+  result = result.replace(/[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af]/g, '').trim();
+  return result;
+};
+
 const parseDrinkName = (name) => {
   const match = name.match(/^(.*?)\s*\(([M|L])\)$/i);
   if (match) {
@@ -59,17 +71,34 @@ export class POSView {
     const categories = this.controller.db.getTable('categories');
 
     const getIconClass = (catId) => {
+      if (catId === 'all') return 'bi-cup-straw';
       if (catId === 'cf') return 'bi-cup-hot-fill';
-      if (catId === 'tra') return 'bi-leaf-fill';
-      if (catId === 'milktea') return 'bi-funnel-fill';
+      if (catId === 'tra') return 'bi-cup-straw';
+      if (catId === 'milktea') return 'bi-cup-straw';
+      if (catId === 'matcha') return 'bi-leaf-fill';
+      if (catId === 'cacao') return 'bi-cup-hot';
       return 'bi-tag-fill';
     };
 
+    const getFriendlyCategoryName = (catId, catName) => {
+      if (catId === 'all') return 'TẤT CẢ MÓN';
+      if (catId === 'cf') return 'CÀ PHÊ';
+      if (catId === 'tra') return 'TRÀ TRÁI CÂY';
+      if (catId === 'milktea') return 'TRÀ SỮA';
+      if (catId === 'matcha') return 'MATCHA';
+      if (catId === 'cacao') return 'CACAO';
+      return cleanName(catName).toUpperCase();
+    };
+
     const buttons = [
-      `<button class="category-tab ${this.activeCategory === 'all' ? 'active' : ''}" data-category="all"><i class="bi bi-grid-fill"></i> Tất cả</button>`,
+      `<button class="category-tab ${this.activeCategory === 'all' ? 'active' : ''}" data-category="all">
+        <i class="bi ${getIconClass('all')}"></i>
+        <span>${getFriendlyCategoryName('all', 'Tất cả')}</span>
+      </button>`,
       ...categories.map(cat => `
         <button class="category-tab ${this.activeCategory === cat.id ? 'active' : ''}" data-category="${cat.id}">
-          <i class="bi ${getIconClass(cat.id)}"></i> ${cat.name}
+          <i class="bi ${getIconClass(cat.id)}"></i>
+          <span>${getFriendlyCategoryName(cat.id, cat.name)}</span>
         </button>
       `)
     ];
@@ -111,7 +140,7 @@ export class POSView {
     // Group items by base name
     const groupedMenu = [];
     filtered.forEach(item => {
-      const { baseName, size } = parseDrinkName(item.name);
+      const { baseName, size } = parseDrinkName(cleanName(item.name));
       let group = groupedMenu.find(g => g.name === baseName);
       if (!group) {
         group = {
@@ -174,24 +203,27 @@ export class POSView {
 
       // Check if image exists, otherwise draw emoji on gradient
       const thumbnailHtml = group.image 
-        ? `<img src="${group.image}" style="width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-sm);" alt="${group.name}">`
-        : `<div class="menu-card-thumbnail ${gradientClass}" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;"><span class="emoji-span">${group.emoji}</span></div>`;
+        ? `<img src="${group.image}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;" alt="${group.name}">`
+        : `<div class="menu-card-thumbnail ${gradientClass}" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border-radius: 12px;"><span class="emoji-span">${group.emoji}</span></div>`;
 
       // Price range text
       const prices = group.variants.map(v => v.price);
       const minPrice = Math.min(...prices);
-      const maxPrice = Math.max(...prices);
-      const priceText = minPrice === maxPrice 
-        ? `${minPrice.toLocaleString('vi-VN')}đ` 
-        : `${minPrice.toLocaleString('vi-VN')}đ - ${maxPrice.toLocaleString('vi-VN')}đ`;
+      
+      const priceText = `${minPrice.toLocaleString('vi-VN')} <span style="text-decoration: underline;">đ</span>`;
 
       return `
         <div class="menu-card" data-index="${index}">
           ${warningBadge}
           <div class="menu-card-thumbnail">${thumbnailHtml}</div>
-          <div class="menu-card-info">
-            <span class="menu-card-name">${group.name}</span>
-            <span class="menu-card-price">${priceText}</span>
+          <div class="menu-card-info-row">
+            <div class="menu-card-details">
+              <span class="menu-card-name">${group.name}</span>
+              <span class="menu-card-price">${priceText}</span>
+            </div>
+            <button class="menu-card-add-btn">
+              <i class="bi bi-plus-lg"></i>
+            </button>
           </div>
         </div>
       `;
@@ -543,6 +575,7 @@ export class POSView {
 
   openCheckoutModal() {
     const total = this.controller.getCartTotal();
+    const storeQr = this.controller.getStorePaymentQr();
     const mount = this.container.querySelector('#pos-modals-mount');
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
@@ -589,32 +622,40 @@ export class POSView {
         <!-- QR panel -->
         <div id="checkout-qr-panel" class="payment-method-panel hidden">
           <div class="qr-modal-body">
-            <div class="qr-canvas-mock" id="checkout-qr-canvas">
-              <svg width="100%" height="100%" viewBox="0 0 100 100">
-                <rect x="0" y="0" width="100" height="100" fill="none" stroke="#ccc" stroke-width="0.5"/>
-                <rect x="5" y="5" width="20" height="20" fill="none" stroke="var(--primary)" stroke-width="4"/>
-                <rect x="10" y="10" width="10" height="10" fill="var(--primary)"/>
-                <rect x="75" y="5" width="20" height="20" fill="none" stroke="var(--primary)" stroke-width="4"/>
-                <rect x="80" y="10" width="10" height="10" fill="var(--primary)"/>
-                <rect x="5" y="75" width="20" height="20" fill="none" stroke="var(--primary)" stroke-width="4"/>
-                <rect x="10" y="80" width="10" height="10" fill="var(--primary)"/>
-                <rect x="35" y="15" width="8" height="8" fill="#555"/>
-                <rect x="50" y="25" width="12" height="6" fill="#333"/>
-                <rect x="30" y="45" width="6" height="12" fill="#444"/>
-                <rect x="60" y="45" width="14" height="14" fill="#333"/>
-                <rect x="40" y="65" width="10" height="10" fill="#222"/>
-                <rect x="65" y="75" width="8" height="10" fill="#444"/>
-                <rect x="45" y="40" width="10" height="8" fill="#555"/>
-              </svg>
-              <div class="qr-bezel-no"><i class="bi bi-ribbon-fill" style="color: var(--primary);"></i></div>
+            <div class="qr-canvas-mock" id="checkout-qr-canvas" style="display: flex; align-items: center; justify-content: center; overflow: hidden; background: white; border: 1.5px dashed var(--border-color); border-radius: var(--radius-md); width: 180px; height: 180px; margin: 0 auto 12px; position: relative;">
+              ${storeQr ? `
+                <img src="${storeQr}" style="width: 100%; height: 100%; object-fit: contain;">
+              ` : `
+                <svg width="100%" height="100%" viewBox="0 0 100 100">
+                  <rect x="0" y="0" width="100" height="100" fill="none" stroke="#ccc" stroke-width="0.5"/>
+                  <rect x="5" y="5" width="20" height="20" fill="none" stroke="var(--primary)" stroke-width="4"/>
+                  <rect x="10" y="10" width="10" height="10" fill="var(--primary)"/>
+                  <rect x="75" y="5" width="20" height="20" fill="none" stroke="var(--primary)" stroke-width="4"/>
+                  <rect x="80" y="10" width="10" height="10" fill="var(--primary)"/>
+                  <rect x="5" y="75" width="20" height="20" fill="none" stroke="var(--primary)" stroke-width="4"/>
+                  <rect x="10" y="80" width="10" height="10" fill="var(--primary)"/>
+                  <rect x="35" y="15" width="8" height="8" fill="#555"/>
+                  <rect x="50" y="25" width="12" height="6" fill="#333"/>
+                  <rect x="30" y="45" width="6" height="12" fill="#444"/>
+                  <rect x="60" y="45" width="14" height="14" fill="#333"/>
+                  <rect x="40" y="65" width="10" height="10" fill="#222"/>
+                  <rect x="65" y="75" width="8" height="10" fill="#444"/>
+                  <rect x="45" y="40" width="10" height="8" fill="#555"/>
+                </svg>
+                <div class="qr-bezel-no"><i class="bi bi-ribbon-fill" style="color: var(--primary);"></i></div>
+              `}
             </div>
             
-            <div style="font-size: 11px; color: var(--text-muted); line-height: 1.5;">
-              <strong>VietinBank - 1028374829 - Tiệm Cà Phê Nơ</strong><br>
-              Số tiền: <strong style="color: var(--primary);">${total.toLocaleString('vi-VN')}đ</strong><br>
-              Nội dung: <strong>Thanh toan don hang No</strong>
+            <div style="font-size: 11px; color: var(--text-muted); line-height: 1.5; text-align: center; margin-bottom: 8px;">
+              ${storeQr ? `
+                Quét mã QR trên để thanh toán số tiền <strong style="color: var(--primary);">${total.toLocaleString('vi-VN')}đ</strong>
+              ` : `
+                <strong>VietinBank - 1028374829 - Tiệm Cà Phê Nơ</strong><br>
+                Số tiền: <strong style="color: var(--primary);">${total.toLocaleString('vi-VN')}đ</strong><br>
+                Nội dung: <strong>Thanh toan don hang No</strong>
+              `}
             </div>
-            <div class="badge badge-success"><i class="bi bi-patch-check-fill"></i> Đã đồng bộ số dư ngân hàng</div>
+            <div class="badge badge-success" style="display: flex; justify-content: center; margin: 0 auto;"><i class="bi bi-patch-check-fill"></i> Đã đồng bộ số dư ngân hàng</div>
           </div>
         </div>
 

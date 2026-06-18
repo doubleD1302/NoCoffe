@@ -1,5 +1,7 @@
 // HomeView.js - Renders and manages the Home Page (Check-in, Schedules, Shift Planners, Wages)
 
+import { NotificationHelper } from '../utils/NotificationHelper.js';
+
 export class HomeView {
   constructor(container, controller) {
     this.container = container;
@@ -173,6 +175,7 @@ export class HomeView {
 
     this.container.innerHTML = `
       <div class="home-employee-layout">
+        ${this.getNotificationBannerHtml()}
         <!-- Greetings header -->
         <div style="margin-bottom: 20px;">
           <h2 style="font-family: var(--font-heading); font-size: 20px; font-weight: 800; color: var(--primary-dark);">${greeting}</h2>
@@ -233,6 +236,13 @@ export class HomeView {
   }
 
   initEmployeeEvents(todayLog, user) {
+    const btnEnable = this.container.querySelector('#btn-home-enable-notifications');
+    if (btnEnable) {
+      btnEnable.addEventListener('click', () => {
+        this.controller.viewManager.handleNotificationBellClick();
+      });
+    }
+
     const btn = this.container.querySelector('#btn-toggle-checkin');
     if (btn && (!todayLog || !todayLog.checkOutTime)) {
       btn.addEventListener('click', () => {
@@ -774,6 +784,7 @@ export class HomeView {
 
     this.container.innerHTML = `
       <div class="home-manager-layout">
+        ${this.getNotificationBannerHtml()}
         <div style="margin-bottom: 16px;">
           <h2 style="font-family: var(--font-heading); font-size: 20px; font-weight: 800; color: var(--primary-dark);">Bảng Quản Trị Nhân Sự</h2>
         </div>
@@ -830,6 +841,13 @@ export class HomeView {
   }
 
   initManagerEvents() {
+    const btnEnable = this.container.querySelector('#btn-home-enable-notifications');
+    if (btnEnable) {
+      btnEnable.addEventListener('click', () => {
+        this.controller.viewManager.handleNotificationBellClick();
+      });
+    }
+
     // Day tabs
     this.container.querySelectorAll('.day-tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1478,5 +1496,21 @@ export class HomeView {
   getTodayStr() {
     const d = new Date();
     return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+  }
+
+  getNotificationBannerHtml() {
+    if (NotificationHelper.permission === 'default') {
+      return `
+        <div class="notification-banner" id="home-notification-banner">
+          <div class="notification-banner-icon"><i class="bi bi-bell-fill"></i></div>
+          <div class="notification-banner-content">
+            <div class="notification-banner-title">Kích hoạt Thông báo</div>
+            <div class="notification-banner-desc">Nhận thông tin cập nhật tức thời về đổi ca trực, phê duyệt và thanh toán lương trên thiết bị của bạn.</div>
+          </div>
+          <button class="btn-enable-notifications" id="btn-home-enable-notifications">Bật ngay</button>
+        </div>
+      `;
+    }
+    return '';
   }
 }

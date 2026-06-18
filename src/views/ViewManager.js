@@ -1,5 +1,7 @@
 // ViewManager.js - Coordinates screen navigation, toasts, and role-based permissions
 
+import { NotificationHelper } from '../utils/NotificationHelper.js';
+
 export class ViewManager {
   constructor(controller) {
     this.controller = controller;
@@ -13,6 +15,8 @@ export class ViewManager {
     this.headerUserBadge = document.getElementById('header-user-badge');
     this.headerRoleDot = document.getElementById('header-role-dot');
     this.headerRoleName = document.getElementById('header-role-name');
+    this.headerNotificationBtn = document.getElementById('header-notification-btn');
+    this.headerNotificationDot = document.getElementById('header-notification-dot');
     
     // Dev Tools DOM Elements
     this.devFloatTrigger = document.getElementById('dev-float-trigger');
@@ -22,6 +26,7 @@ export class ViewManager {
     this.devSeedBtn = document.getElementById('dev-seed-btn');
     
     this.initEvents();
+    this.updateNotificationBellUI();
   }
 
   initEvents() {
@@ -75,6 +80,13 @@ export class ViewManager {
         this.controller.seedMockData();
       });
     });
+
+    // Notification Bell Click
+    if (this.headerNotificationBtn) {
+      this.headerNotificationBtn.addEventListener('click', () => {
+        this.handleNotificationBellClick();
+      });
+    }
   }
 
   updateHeader(user) {
@@ -179,7 +191,7 @@ export class ViewManager {
     });
   }
 
-  showConfirm(message, callback) {
+  showConfirm(message, callback, cancelCallback) {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.style.zIndex = '9999';
@@ -205,13 +217,19 @@ export class ViewManager {
       setTimeout(() => overlay.remove(), 150);
     };
 
-    overlay.querySelector('.btn-cancel-confirm').addEventListener('click', close);
+    overlay.querySelector('.btn-cancel-confirm').addEventListener('click', () => {
+      close();
+      if (typeof cancelCallback === 'function') cancelCallback();
+    });
     overlay.querySelector('.btn-ok-confirm').addEventListener('click', () => {
       close();
       if (typeof callback === 'function') callback();
     });
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) close();
+      if (e.target === overlay) {
+        close();
+        if (typeof cancelCallback === 'function') cancelCallback();
+      }
     });
   }
 
@@ -302,6 +320,8 @@ export class ViewManager {
 
     const drawEditForm = () => {
       let tempAvatar = user.avatar || '';
+      let tempQr = user.qrCode || '';
+      const isManager = user.role === 'manager' || user.role === 'dev-admin';
 
       overlay.innerHTML = `
         <div class="modal-content" style="max-width: 320px; border-radius: var(--radius-lg); padding: 20px; align-self: center;">
@@ -320,6 +340,18 @@ export class ViewManager {
                 <button type="button" class="btn-secondary" id="btn-trigger-upload-avatar" style="font-size: 10px; padding: 4px 8px;"><i class="bi bi-upload"></i> Chọn ảnh</button>
               </div>
             </div>
+
+            ${isManager ? `
+            <div style="display: flex; align-items: center; gap: 12px; background: var(--bg-app); padding: 8px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+              <div id="profile-edit-qr-preview" style="width: 48px; height: 48px; border-radius: var(--radius-sm); border: 1px dashed var(--border-color); display: flex; align-items: center; justify-content: center; overflow: hidden; background: white;">
+                ${tempQr ? `<img src="${tempQr}" style="width: 100%; height: 100%; object-fit: contain;">` : `<i class="bi bi-qr-code" style="font-size: 24px; color: var(--text-light);"></i>`}
+              </div>
+              <div style="flex: 1;">
+                <input type="file" id="edit-profile-qr-file" accept="image/*" style="display: none;">
+                <button type="button" class="btn-secondary" id="btn-trigger-upload-qr" style="font-size: 10px; padding: 4px 8px;"><i class="bi bi-upload"></i> Tải QR cửa hàng</button>
+              </div>
+            </div>
+            ` : ''}
 
             <div class="form-group">
               <label for="profile-name">Họ và tên</label>
@@ -354,6 +386,24 @@ export class ViewManager {
         }
       });
 
+      // QR Upload Event handler (for managers)
+      if (isManager) {
+        const qrInput = overlay.querySelector('#edit-profile-qr-file');
+        const qrTrigger = overlay.querySelector('#btn-trigger-upload-qr');
+        const qrPreview = overlay.querySelector('#profile-edit-qr-preview');
+
+        qrTrigger.addEventListener('click', () => qrInput.click());
+        qrInput.addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            this.compressImage(file, (base64Str) => {
+              tempQr = base64Str;
+              qrPreview.innerHTML = `<img src="${base64Str}" style="width: 100%; height: 100%; object-fit: contain;">`;
+            });
+          }
+        });
+      }
+
       overlay.querySelector('.btn-back-profile').addEventListener('click', drawProfileMenu);
       overlay.querySelector('.btn-cancel-edit').addEventListener('click', drawProfileMenu);
 
@@ -363,7 +413,7 @@ export class ViewManager {
         const newPassword = overlay.querySelector('#profile-password').value.trim() || undefined;
 
         this.showLoading('Đang cập nhật tài khoản...');
-        const success = await this.controller.handleUpdateProfile(user.id, newName, newPassword, tempAvatar);
+        const success = await this.controller.handleUpdateProfile(user.id, newName, newPassword, tempAvatar, tempQr);
         this.hideLoading();
 
         if (success) {
@@ -413,5 +463,62 @@ export class ViewManager {
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
+  }
+
+  updateNotificationBellUI() {
+    if (!this.headerNotificationBtn) return;
+    const perm = NotificationHelper.permission;
+    
+    if (perm === 'granted') {
+      this.headerNotificationBtn.classList.remove('denied');
+      this.headerNotificationDot.classList.add('hidden');
+      this.headerNotificationBtn.title = 'Thông báo: Đã bật';
+      
+      const banner = document.getElementById('home-notification-banner');
+      if (banner) {
+        banner.style.opacity = '0';
+        banner.style.transform = 'translateY(-10px)';
+        banner.style.transition = 'all 0.3s ease';
+        setTimeout(() => banner.remove(), 300);
+      }
+    } else if (perm === 'denied') {
+      this.headerNotificationBtn.classList.add('denied');
+      this.headerNotificationDot.classList.add('hidden');
+      this.headerNotificationBtn.title = 'Thông báo: Đã chặn (vui lòng mở lại trong cài đặt)';
+      
+      const banner = document.getElementById('home-notification-banner');
+      if (banner) banner.remove();
+    } else {
+      // default
+      this.headerNotificationBtn.classList.remove('denied');
+      this.headerNotificationDot.classList.remove('hidden'); // Show dot to draw attention
+      this.headerNotificationBtn.title = 'Nhấp để bật thông báo';
+    }
+  }
+
+  async handleNotificationBellClick() {
+    const perm = NotificationHelper.permission;
+    if (perm === 'granted') {
+      NotificationHelper.send('🎗️ Thông báo đã được kích hoạt!', 'Bạn sẽ nhận được các thông báo ca trực và đơn hàng tại đây.');
+      this.showToast('Thông báo đang hoạt động bình thường!', 'success');
+    } else if (perm === 'denied') {
+      this.showToast('Vui lòng mở cài đặt trình duyệt để cho phép quyền thông báo cho trang web này.', 'danger');
+    } else {
+      this.showToast('Đang yêu cầu quyền gửi thông báo...', 'warning');
+      const newPerm = await NotificationHelper.requestPermission();
+      this.updateNotificationBellUI();
+      if (newPerm === 'granted') {
+        NotificationHelper.send('🎗️ Kích hoạt thành công!', 'Cảm ơn bạn đã bật thông báo từ Nơ Coffee.');
+        this.showToast('Đã bật thông báo thành công!', 'success');
+        
+        // Refresh home view to hide permission banner
+        const activeUser = this.controller.getCurrentUser();
+        if (activeUser && this.controller.activeTab === 'home-view') {
+          this.controller.switchTab('home-view');
+        }
+      } else {
+        this.showToast('Quyền gửi thông báo bị từ chối.', 'danger');
+      }
+    }
   }
 }

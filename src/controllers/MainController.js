@@ -5,6 +5,7 @@ import { POSModel } from '../models/POSModel.js';
 import { InventoryModel } from '../models/InventoryModel.js';
 import { WasteModel } from '../models/WasteModel.js';
 import { MenuModel } from '../models/MenuModel.js';
+import { NotificationHelper } from '../utils/NotificationHelper.js';
 
 export class MainController {
   constructor(db) {
@@ -22,6 +23,24 @@ export class MainController {
     this.views = {};
 
     this.activeTab = 'home-view'; // Trang Chủ is now default landing tab
+
+    // Notification previous state cache
+    this.prevData = null;
+
+    this.menuUpdatePending = false;
+
+    // Listen to database sync events
+    document.addEventListener('database-synced', (e) => {
+      this.checkDataChanges(e.detail);
+    });
+
+    // Background polling: sync from MongoDB server every 10 seconds
+    setInterval(() => {
+      const user = this.getActiveUser();
+      if (user) {
+        this.db.fetchDb();
+      }
+    }, 10000);
   }
 
   setViewManager(viewManager) {
@@ -45,6 +64,13 @@ export class MainController {
     const user = this.authModel.getCurrentUser();
     this.viewManager.updateHeader(user);
 
+    // Prompt for notification permission on start if default
+    if (user && NotificationHelper.permission === 'default') {
+      NotificationHelper.requestPermission().then(() => {
+        if (this.viewManager) this.viewManager.updateNotificationBellUI();
+      });
+    }
+
     if (this.authModel.isBypassLogin() && !user) {
       const devUser = this.db.getTable('users').find(u => u.role === 'dev-admin');
       this.authModel.setCurrentUser(devUser);
@@ -60,6 +86,9 @@ export class MainController {
       }
       this.viewManager.applyRoleRestrictions(user);
       this.switchTab(this.activeTab);
+      if (user.role === 'manager') {
+        this.checkEmptyMenuAndPrompt();
+      }
     } else {
       this.viewManager.applyRoleRestrictions(null);
       this.switchTab('login-view');
@@ -81,7 +110,17 @@ export class MainController {
         // Fetch database for this user specifically
         await this.db.fetchDb();
         
+        // Request notification permission after login
+        if (NotificationHelper.permission === 'default') {
+          NotificationHelper.requestPermission().then(() => {
+            if (this.viewManager) this.viewManager.updateNotificationBellUI();
+          });
+        }
+        
         this.switchTab('home-view');
+        if (user.role === 'manager') {
+          this.checkEmptyMenuAndPrompt();
+        }
         return true;
       }
       return false;
@@ -134,6 +173,40 @@ export class MainController {
     }
   }
 
+  async checkEmptyMenuAndPrompt() {
+    const user = this.getActiveUser();
+    if (!user || user.role !== 'manager') {
+      return;
+    }
+    const menu = this.db.getTable('menu');
+    if (menu.length === 0) {
+      this.viewManager.showConfirm('Bạn có muốn sử dụng menu mặc định của Nơ Coffee không?', () => {
+        this.viewManager.showConfirm('Bạn có muốn triển khai dữ liệu ảo trong kho cho hợp lý với menu không? Dữ liệu này có thể được điều chỉnh sau đó để khớp với thực tế.', () => {
+          this.syncDefaultMenu(true);
+        }, () => {
+          this.syncDefaultMenu(false);
+        });
+      });
+    }
+  }
+
+  async syncDefaultMenu(seedInventory) {
+    this.viewManager.showLoading('Đang đồng bộ thực đơn mặc định...');
+    try {
+      const success = await this.db.syncDefaultMenu(seedInventory);
+      if (success) {
+        this.viewManager.showToast('Đã đồng bộ thực đơn mặc định thành công!', 'success');
+        this.switchTab(this.activeTab);
+      } else {
+        this.viewManager.showToast('Lỗi khi đồng bộ thực đơn', 'danger');
+      }
+    } catch (e) {
+      console.error(e);
+      this.viewManager.showToast('Gặp sự cố khi đồng bộ thực đơn', 'danger');
+    } finally {
+      this.viewManager.hideLoading();
+    }
+  }
 
   logout() {
     this.authModel.logout();
@@ -148,9 +221,9 @@ export class MainController {
     return this.authModel.getCurrentUser();
   }
 
-  async handleUpdateProfile(id, name, password, avatar) {
+  async handleUpdateProfile(id, name, password, avatar, qrCode) {
     try {
-      const success = await this.db.updateProfile(id, name, password, avatar);
+      const success = await this.db.updateProfile(id, name, password, avatar, qrCode);
       if (success) {
         const user = this.authModel.getCurrentUser();
         this.viewManager.updateHeader(user);
@@ -161,6 +234,22 @@ export class MainController {
       console.error(e);
     }
     return false;
+  }
+
+  getStorePaymentQr() {
+    const currentUser = this.getActiveUser();
+    if (!currentUser) return '';
+    const allUsers = this.getUsers();
+    
+    // If manager or dev-admin, return their own QR code
+    if (currentUser.role === 'manager' || currentUser.role === 'dev-admin') {
+      const userObj = allUsers.find(u => u.id === currentUser.id);
+      return userObj ? (userObj.qrCode || '') : '';
+    } else {
+      // If employee, return the manager's QR code
+      const manager = allUsers.find(u => u.id === currentUser.managerId);
+      return manager ? (manager.qrCode || '') : '';
+    }
   }
 
   isBypassLogin() {
@@ -651,5 +740,164 @@ export class MainController {
       return allUsers.filter(u => u.role === 'employee' && u.managerId === currentUser.id);
     }
     return [];
+  }
+
+  // Notification change-checking system
+  initPrevData(data) {
+    this.prevData = JSON.parse(JSON.stringify(data));
+  }
+
+  checkDataChanges(newData) {
+    const currentUser = this.getActiveUser();
+    if (!currentUser) {
+      this.prevData = null;
+      return;
+    }
+
+    if (!this.prevData) {
+      this.initPrevData(newData);
+      return;
+    }
+
+    // 1. Check Shift Request status changes
+    const prevReqs = this.prevData.shiftRequests || [];
+    const newReqs = newData.shiftRequests || [];
+
+    // For managers: Notify about new pending shift requests
+    if (currentUser.role === 'manager' || currentUser.role === 'dev-admin') {
+      newReqs.forEach(req => {
+        if (req.status === 'pending') {
+          const existedBefore = prevReqs.some(r => r.id === req.id);
+          if (!existedBefore) {
+            NotificationHelper.notifyShiftRequestCreated(req);
+          }
+        }
+      });
+    }
+
+    // For employees: Notify about approved/rejected status
+    if (currentUser.role === 'employee') {
+      newReqs.forEach(req => {
+        if (req.employeeId === currentUser.id && req.status !== 'pending') {
+          const prevReq = prevReqs.find(r => r.id === req.id);
+          if (prevReq && prevReq.status === 'pending') {
+            NotificationHelper.notifyShiftRequestStatus(req);
+          }
+        }
+      });
+    }
+
+    // 2. Check Shift changes (for employees)
+    if (currentUser.role === 'employee') {
+      const prevShifts = this.prevData.shifts || [];
+      const newShifts = newData.shifts || [];
+      newShifts.forEach(shift => {
+        if (shift.employeeId === currentUser.id) {
+          const prevShift = prevShifts.find(s => s.id === shift.id);
+          // If shift was not assigned to them before, or changed time range/name
+          if (prevShift) {
+            if (prevShift.employeeId !== currentUser.id) {
+              NotificationHelper.notifyShiftUpdated(shift.shiftName, shift.timeRange, shift.dayOfWeek);
+            } else if (prevShift.shiftName !== shift.shiftName || prevShift.timeRange !== shift.timeRange) {
+              NotificationHelper.notifyShiftUpdated(shift.shiftName, shift.timeRange, shift.dayOfWeek);
+            }
+          } else {
+            // New shift assigned
+            NotificationHelper.notifyShiftUpdated(shift.shiftName, shift.timeRange, shift.dayOfWeek);
+          }
+        }
+      });
+    }
+
+    // 3. Check Salary Paid (for employees)
+    if (currentUser.role === 'employee') {
+      const prevAttendance = this.prevData.attendance || [];
+      const newAttendance = newData.attendance || [];
+      
+      let paidCount = 0;
+      let totalAmountPaid = 0;
+      newAttendance.forEach(att => {
+        if (att.employeeId === currentUser.id && att.paidStatus === 'paid') {
+          const prevAtt = prevAttendance.find(a => a.id === att.id);
+          if (prevAtt && prevAtt.paidStatus === 'unpaid') {
+            paidCount++;
+            const wage = (att.durationHours || 0) * (currentUser.hourlyWage || 20000);
+            totalAmountPaid += wage;
+          }
+        }
+      });
+      if (paidCount > 0 && totalAmountPaid > 0) {
+        NotificationHelper.notifySalaryPaid(currentUser.name, totalAmountPaid);
+      }
+    }
+
+    // 4. Check New Order completed (for managers/dev-admin)
+    if (currentUser.role === 'manager' || currentUser.role === 'dev-admin') {
+      const prevOrders = this.prevData.orders || [];
+      const newOrders = newData.orders || [];
+      newOrders.forEach(order => {
+        const existed = prevOrders.some(o => o.id === order.id);
+        if (!existed) {
+          NotificationHelper.notifyOrderCompleted(order);
+        }
+      });
+    }
+
+    // 5. Check attendance log (for employees checking in/out)
+    if (currentUser.role === 'employee') {
+      const prevAttendance = this.prevData.attendance || [];
+      const newAttendance = newData.attendance || [];
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+      const prevTodayAtt = prevAttendance.find(a => a.employeeId === currentUser.id && a.date === todayStr);
+      const newTodayAtt = newAttendance.find(a => a.employeeId === currentUser.id && a.date === todayStr);
+      if (newTodayAtt) {
+        if (!prevTodayAtt) {
+          NotificationHelper.notifyAttendance('checkin', newTodayAtt.checkInTime);
+        } else if (newTodayAtt.checkOutTime && !prevTodayAtt.checkOutTime) {
+          NotificationHelper.notifyAttendance('checkout', newTodayAtt.checkOutTime);
+        }
+      }
+    }
+
+    // 6. Check Menu changes (to trigger UI sync between employee POS and manager Menu)
+    const prevMenu = this.prevData.menu || [];
+    const newMenu = newData.menu || [];
+
+    let menuChanged = prevMenu.length !== newMenu.length;
+    if (!menuChanged) {
+      // Compare item details
+      for (const newItem of newMenu) {
+        const prevItem = prevMenu.find(m => m.id === newItem.id);
+        if (!prevItem) {
+          menuChanged = true;
+          break;
+        }
+        if (prevItem.price !== newItem.price || 
+            prevItem.name !== newItem.name || 
+            prevItem.category !== newItem.category || 
+            JSON.stringify(prevItem.recipe) !== JSON.stringify(newItem.recipe) ||
+            prevItem.image !== newItem.image) {
+          menuChanged = true;
+          break;
+        }
+      }
+    }
+
+    if (menuChanged) {
+      this.menuUpdatePending = true;
+    }
+
+    if (this.menuUpdatePending) {
+      const hasModal = document.querySelector('.modal-overlay') !== null;
+      if (!hasModal) {
+        console.log('🔄 Refreshing current tab to show updated menu:', this.activeTab);
+        this.switchTab(this.activeTab);
+        this.menuUpdatePending = false;
+      }
+    }
+
+    // Save snapshot for next comparison
+    this.prevData = JSON.parse(JSON.stringify(newData));
   }
 }
