@@ -16,13 +16,16 @@ export class MenuView {
   constructor(container, controller) {
     this.container = container;
     this.controller = controller;
-    
+
     // Temp state holding active recipe edits in the modal
-    this.currentRecipeEdit = {}; 
+    this.currentRecipeEdit = {};
     this.uploadedImageBase64 = '';
   }
 
   render() {
+    const activeUser = this.controller.getActiveUser();
+    const isEmployee = activeUser && activeUser.role === 'employee';
+
     this.container.innerHTML = `
       <div class="pos-layout">
         <!-- Category Sidebar -->
@@ -33,8 +36,8 @@ export class MenuView {
         <!-- Catalog Area -->
         <div class="menu-grid-container" style="flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden;">
           <div class="view-title-row" style="padding: 16px 14px 0 14px;">
-            <h2>Quản Lý Thực Đơn</h2>
-            <button class="btn-primary" id="btn-open-add-menu" style="padding: 6px 12px; font-size: 13px;"><i class="bi bi-plus-circle-fill"></i> Thêm món</button>
+            <h2>${isEmployee ? 'Thực Đơn & Công Thức' : 'Quản Lý Thực Đơn'}</h2>
+            ${isEmployee ? '' : '<button class="btn-primary" id="btn-open-add-menu" style="padding: 6px 12px; font-size: 13px;"><i class="bi bi-plus-circle-fill"></i> Thêm món</button>'}
           </div>
 
           <!-- Drink Grid (Reusing POS CSS classes!) -->
@@ -56,9 +59,12 @@ export class MenuView {
   }
 
   initEvents() {
-    this.container.querySelector('#btn-open-add-menu').addEventListener('click', () => {
-      this.openAddMenuModal();
-    });
+    const btnAddMenu = this.container.querySelector('#btn-open-add-menu');
+    if (btnAddMenu) {
+      btnAddMenu.addEventListener('click', () => {
+        this.openAddMenuModal();
+      });
+    }
   }
 
   renderCategoryTabs() {
@@ -118,8 +124,10 @@ export class MenuView {
     const menu = this.controller.getMenuModel().getMenu();
     const inventory = this.controller.getInventoryModel();
     const ingredients = inventory.getIngredients();
+    const activeUser = this.controller.getActiveUser();
+    const isEmployee = activeUser && activeUser.role === 'employee';
 
-    const filtered = menu.filter(drink => 
+    const filtered = menu.filter(drink =>
       this.activeCategory === 'all' || drink.category === this.activeCategory
     );
 
@@ -142,8 +150,8 @@ export class MenuView {
         });
       }
 
-      const recipeSummary = recipeItems.length > 0 
-        ? recipeItems.join(' • ') 
+      const recipeSummary = recipeItems.length > 0
+        ? recipeItems.join(' • ')
         : '<span style="color: var(--danger);">Chưa cấu hình công thức!</span>';
 
       // Check category placeholder gradient
@@ -154,15 +162,20 @@ export class MenuView {
       else if (drink.category === 'matcha') gradientClass = 'placeholder-gradient-matcha';
       else if (drink.category === 'cacao') gradientClass = 'placeholder-gradient-cacao';
 
-      // Check if image exists, otherwise draw emoji
-      const thumbnailHtml = drink.image 
-        ? `<img src="${drink.image}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;" alt="${drink.name}">`
-        : `<div class="menu-card-thumbnail ${gradientClass}" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border-radius: 12px;"><span class="emoji-span">${drink.emoji}</span></div>`;
+      // Check if image exists, otherwise draw square warning box with text
+      const thumbnailHtml = drink.image
+        ? `<div class="menu-card-thumbnail">
+            <img src="${drink.image}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;" alt="${drink.name}">
+           </div>`
+        : `<div class="menu-card-thumbnail ${gradientClass}" style="display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 10px; text-align: center; gap: 4px;">
+            <i class="bi bi-image" style="font-size: 20px; color: var(--text-light);"></i>
+            <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); line-height: 1.2;">Vui lòng thêm ảnh mô tả</span>
+           </div>`;
 
       return `
-        <div class="menu-card" style="cursor: default;">
-          <div class="menu-card-thumbnail">${thumbnailHtml}</div>
-          <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; width: 100%;">
+        <div class="menu-card menu-item-card" data-id="${drink.id}" style="cursor: pointer;">
+          ${thumbnailHtml}
+          <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
             <span class="menu-card-name" style="height: auto; min-height: 36px; margin-bottom: 2px;">${cleanName(drink.name)}</span>
             <span class="menu-card-price" style="margin-bottom: 8px;">${drink.price.toLocaleString('vi-VN')} <span style="text-decoration: underline;">đ</span></span>
             
@@ -170,29 +183,43 @@ export class MenuView {
               <strong>Định lượng:</strong> ${recipeSummary}
             </div>
           </div>
+          ${isEmployee ? '' : `
           <div style="display: flex; gap: 6px; justify-content: flex-end; width: 100%; border-top: 1px dashed var(--border-color); padding-top: 8px;">
             <button class="btn-secondary btn-edit-recipe" data-id="${drink.id}" style="padding: 5px 10px; font-size: 11px; height: auto; display: flex; align-items: center; gap: 4px;"><i class="bi bi-pencil-square"></i> Sửa</button>
             <button class="btn-danger btn-delete-menu-item" data-id="${drink.id}" style="padding: 5px 8px; font-size: 11px; height: auto; background: var(--danger); border-color: var(--danger); display: flex; align-items: center; justify-content: center;"><i class="bi bi-trash-fill"></i></button>
           </div>
+          `}
         </div>
       `;
     }).join('');
 
-    mount.querySelectorAll('.btn-edit-recipe').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-id');
+    // Wire Card Click
+    mount.querySelectorAll('.menu-item-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        // Prevent opening edit modal twice if direct buttons were clicked
+        if (e.target.closest('button')) return;
+        const id = card.getAttribute('data-id');
         this.openEditRecipeModal(id);
       });
     });
 
-    mount.querySelectorAll('.btn-delete-menu-item').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-id');
-        this.controller.viewManager.showConfirm('Bạn có chắc chắn muốn xoá đồ uống này khỏi Menu không?', () => {
-          this.controller.handleDeleteMenuItem(id);
+    if (!isEmployee) {
+      mount.querySelectorAll('.btn-edit-recipe').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          this.openEditRecipeModal(id);
         });
       });
-    });
+
+      mount.querySelectorAll('.btn-delete-menu-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          this.controller.viewManager.showConfirm('Bạn có chắc chắn muốn xoá đồ uống này khỏi Menu không?', () => {
+            this.controller.handleDeleteMenuItem(id);
+          });
+        });
+      });
+    }
   }
 
   // ==========================================================================
@@ -202,23 +229,26 @@ export class MenuView {
     const drink = this.controller.getMenuById(drinkId);
     if (!drink) return;
 
+    const activeUser = this.controller.getActiveUser();
+    const isEmployee = activeUser && activeUser.role === 'employee';
+
     const mount = this.container.querySelector('#menu-modals-mount');
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.style.zIndex = '999';
 
     // Parse recipe map safely
-    const recipeObj = typeof drink.recipe.entries === 'function' ? Object.fromEntries(drink.recipe) : drink.recipe;
+    const recipeObj = (drink.recipe && typeof drink.recipe.entries === 'function') ? Object.fromEntries(drink.recipe) : (drink.recipe || {});
     
     // Sync to temporary View state
     this.currentRecipeEdit = { ...recipeObj }; 
-    this.uploadedImageBase64 = drink.image || '';
+    let uploadedImageBase64 = drink.image || '';
 
     overlay.innerHTML = `
       <div class="modal-content" style="max-height: 90%; width: 95%;">
         <div class="drawer-handle"></div>
         <div class="modal-header">
-          <h3>Cấu hình: ${cleanName(drink.name)}</h3>
+          <h3>${isEmployee ? 'Công thức' : 'Cấu hình'}: ${cleanName(drink.name)}</h3>
           <button class="btn-icon-small btn-close-modal">×</button>
         </div>
 
@@ -228,15 +258,19 @@ export class MenuView {
             ${this.uploadedImageBase64 ? `<img src="${this.uploadedImageBase64}" style="width: 100%; height: 100%; object-fit: cover;">` : `<i class="bi bi-image" style="font-size: 24px; color: var(--text-light);"></i>`}
           </div>
           <div style="flex: 1;">
-            <input type="file" id="edit-drink-image-file" accept="image/*" style="display: none;">
-            <button type="button" class="btn-secondary" id="btn-trigger-upload-image" style="font-size: 11px; padding: 6px 12px;"><i class="bi bi-upload"></i> Tải ảnh mới</button>
-            <div style="font-size: 9px; color: var(--text-light); margin-top: 4px;">Tải tệp ảnh JPG/PNG. Sẽ tự nén nhỏ.</div>
+            ${isEmployee ? `
+              <div style="font-size: 13px; font-weight: 700; color: var(--text-main);">Hình ảnh sản phẩm</div>
+            ` : `
+              <input type="file" id="edit-drink-image-file" accept="image/*" style="display: none;">
+              <button type="button" class="btn-secondary" id="btn-trigger-upload-image" style="font-size: 11px; padding: 6px 12px;"><i class="bi bi-upload"></i> Tải ảnh mới</button>
+              <div style="font-size: 9px; color: var(--text-light); margin-top: 4px;">Tải tệp ảnh JPG/PNG. Sẽ tự nén nhỏ.</div>
+            `}
           </div>
         </div>
 
         <div class="form-group">
           <label for="edit-drink-price">Giá bán (VND)</label>
-          <input type="number" id="edit-drink-price" class="input-field" value="${drink.price}" step="1000" min="0">
+          <input type="number" id="edit-drink-price" class="input-field" value="${drink.price}" step="1000" min="0" ${isEmployee ? 'disabled' : ''}>
         </div>
 
         <!-- Dynamic Recipes Section -->
@@ -247,14 +281,22 @@ export class MenuView {
         </div>
 
         <!-- Add new ingredient selector drop -->
+        ${isEmployee ? '' : `
         <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 8px; padding: 8px; background: var(--primary-soft); border-radius: var(--radius-md); border: 1px dashed var(--primary-light); margin-bottom: 20px;">
           <select id="select-add-recipe-ing" class="select-field" style="padding: 6px; font-size: 12px;"></select>
           <button type="button" class="btn-primary" id="btn-add-recipe-ing-row" style="font-size: 11px; padding: 6px;"><i class="bi bi-plus-lg"></i> Thêm</button>
         </div>
+        `}
 
+        ${isEmployee ? `
+        <button class="btn-secondary btn-close-modal-footer" style="width: 100%; height: 44px;">
+          <i class="bi bi-x-circle-fill"></i> Đóng
+        </button>
+        ` : `
         <button class="btn-primary" id="btn-save-recipe-confirm" style="width: 100%; height: 44px;">
           <i class="bi bi-cloud-arrow-up-fill"></i> Đồng Bộ Cơ Sở Dữ Liệu
         </button>
+        `}
       </div>
     `;
 
@@ -269,29 +311,43 @@ export class MenuView {
       if (e.target === overlay) closeModal();
     });
 
+    const btnCloseModalFooter = overlay.querySelector('.btn-close-modal-footer');
+    if (btnCloseModalFooter) {
+      btnCloseModalFooter.addEventListener('click', closeModal);
+    }
+
     // Wire Image Uploader
     const fileInput = overlay.querySelector('#edit-drink-image-file');
     const uploaderTrigger = overlay.querySelector('#btn-trigger-upload-image');
     const imagePreview = overlay.querySelector('#recipe-edit-image-preview');
 
-    uploaderTrigger.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        this.compressImage(file, (base64Str) => {
-          this.uploadedImageBase64 = base64Str;
-          imagePreview.innerHTML = `<img src="${base64Str}" style="width: 100%; height: 100%; object-fit: cover;">`;
-        });
-      }
-    });
+    if (uploaderTrigger && fileInput) {
+      uploaderTrigger.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          this.compressImage(file, (base64Str) => {
+            uploadedImageBase64 = base64Str;
+            imagePreview.innerHTML = `<img src="${base64Str}" style="width: 100%; height: 100%; object-fit: cover;">`;
+          });
+        }
+      });
+    }
 
     // Helper functions to manage dynamic rows
+    const saveInputValues = () => {
+      overlay.querySelectorAll('.ing-qty-input').forEach(input => {
+        const targetId = input.getAttribute('data-ing-id');
+        this.currentRecipeEdit[targetId] = Number(input.value) || 0;
+      });
+    };
+
     const drawRecipeRows = () => {
       const rowsContainer = overlay.querySelector('#edit-recipe-ingredients-rows');
       const ingredients = this.controller.getInventoryModel().getIngredients();
 
       if (Object.keys(this.currentRecipeEdit).length === 0) {
-        rowsContainer.innerHTML = `<div style="font-size: 11px; text-align: center; color: var(--text-light); padding: 10px;">Chưa gán nguyên liệu nào. Hãy thêm ở dưới.</div>`;
+        rowsContainer.innerHTML = `<div style="font-size: 11px; text-align: center; color: var(--text-light); padding: 10px;">Chưa gán nguyên liệu nào. ${isEmployee ? '' : 'Hãy thêm ở dưới.'}</div>`;
         return;
       }
 
@@ -299,40 +355,44 @@ export class MenuView {
         const qty = this.currentRecipeEdit[ingId];
         const ing = ingredients.find(i => i.id === ingId);
         if (!ing) return '';
-        
+
         return `
-          <div class="recipe-ingredient-row" data-ing-id="${ingId}" style="grid-template-columns: 2fr 1fr 80px 30px; display: grid; gap: 6px; align-items: center; margin-bottom: 6px;">
+          <div class="recipe-ingredient-row" data-ing-id="${ingId}" style="grid-template-columns: ${isEmployee ? '2fr 1fr 80px' : '2fr 1fr 80px 30px'}; display: grid; gap: 6px; align-items: center; margin-bottom: 6px;">
             <span style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${ing.name}</span>
             <span style="font-size: 10px; color: var(--text-light);">(${ing.unit})</span>
-            <input type="number" class="input-field ing-qty-input" data-ing-id="${ingId}" value="${qty}" min="0.01" step="any" style="padding: 4px; font-size: 12px; text-align: center; height: 28px;">
-            <button type="button" class="btn-danger btn-delete-recipe-row" data-ing-id="${ingId}" style="padding: 4px; width: 28px; height: 28px; border-radius: 4px; font-size: 10px;">×</button>
+            <input type="number" class="input-field ing-qty-input" data-ing-id="${ingId}" value="${qty}" min="0.01" step="any" ${isEmployee ? 'disabled' : ''} style="padding: 4px; font-size: 12px; text-align: center; height: 28px;">
+            ${isEmployee ? '' : `<button type="button" class="btn-danger btn-delete-recipe-row" data-ing-id="${ingId}" style="padding: 4px; width: 28px; height: 28px; border-radius: 4px; font-size: 10px;">×</button>`}
           </div>
         `;
       }).join('');
 
-      // Wire Row Deletion clicks
-      rowsContainer.querySelectorAll('.btn-delete-recipe-row').forEach(btnDel => {
-        btnDel.addEventListener('click', () => {
-          const targetId = btnDel.getAttribute('data-ing-id');
-          delete this.currentRecipeEdit[targetId];
-          drawRecipeRows();
-          updateAddDropdown();
+      if (!isEmployee) {
+        // Wire Row Deletion clicks
+        rowsContainer.querySelectorAll('.btn-delete-recipe-row').forEach(btnDel => {
+          btnDel.addEventListener('click', () => {
+            const targetId = btnDel.getAttribute('data-ing-id');
+            saveInputValues(); // Save active typings first
+            delete this.currentRecipeEdit[targetId];
+            drawRecipeRows();
+            updateAddDropdown();
+          });
         });
-      });
 
-      // Bind input changes to sync values with state
-      rowsContainer.querySelectorAll('.ing-qty-input').forEach(input => {
-        input.addEventListener('change', () => {
-          const targetId = input.getAttribute('data-ing-id');
-          this.currentRecipeEdit[targetId] = Number(input.value) || 0;
+        // Bind input changes to sync values with state
+        rowsContainer.querySelectorAll('.ing-qty-input').forEach(input => {
+          input.addEventListener('change', () => {
+            const targetId = input.getAttribute('data-ing-id');
+            this.currentRecipeEdit[targetId] = Number(input.value) || 0;
+          });
         });
-      });
+      }
     };
 
     const updateAddDropdown = () => {
       const select = overlay.querySelector('#select-add-recipe-ing');
+      if (!select) return;
       const ingredients = this.controller.getInventoryModel().getIngredients();
-      
+
       // Filter out ingredients already in the active recipe
       const available = ingredients.filter(i => this.currentRecipeEdit[i.id] === undefined);
 
@@ -345,55 +405,63 @@ export class MenuView {
       }
     };
 
-    // Add ingredient row handler
-    overlay.querySelector('#btn-add-recipe-ing-row').addEventListener('click', () => {
-      const select = overlay.querySelector('#select-add-recipe-ing');
-      const selectedId = select.value;
-      if (selectedId) {
-        this.currentRecipeEdit[selectedId] = 0; // Initialize with 0 qty
-        drawRecipeRows();
-        updateAddDropdown();
-      }
-    });
+    const btnAddRecipeIngRow = overlay.querySelector('#btn-add-recipe-ing-row');
+    if (btnAddRecipeIngRow) {
+      btnAddRecipeIngRow.addEventListener('click', () => {
+        const select = overlay.querySelector('#select-add-recipe-ing');
+        const selectedId = select.value;
+        if (selectedId) {
+          saveInputValues(); // Save active typings first
+          this.currentRecipeEdit[selectedId] = 0; // Initialize with 0 qty
+          drawRecipeRows();
+          updateAddDropdown();
+        }
+      });
+    }
 
     // Initial render
     drawRecipeRows();
     updateAddDropdown();
 
     // Confirm button save
-    overlay.querySelector('#btn-save-recipe-confirm').addEventListener('click', async () => {
-      const newPrice = Number(overlay.querySelector('#edit-drink-price').value);
-      
-      // Recalibrate and read final quantity input values
-      overlay.querySelectorAll('.ing-qty-input').forEach(input => {
-        const targetId = input.getAttribute('data-ing-id');
-        this.currentRecipeEdit[targetId] = Number(input.value) || 0;
-      });
-
-      // Clean out items with 0 quantities
-      const finalRecipe = {};
-      Object.keys(this.currentRecipeEdit).forEach(k => {
-        if (this.currentRecipeEdit[k] > 0) {
-          finalRecipe[k] = this.currentRecipeEdit[k];
+    const btnSaveRecipeConfirm = overlay.querySelector('#btn-save-recipe-confirm');
+    if (btnSaveRecipeConfirm) {
+      btnSaveRecipeConfirm.addEventListener('click', async () => {
+        const priceInput = overlay.querySelector('#edit-drink-price');
+        const newPrice = Number(priceInput.value);
+        if (isNaN(newPrice) || newPrice < 0) {
+          this.controller.viewManager.showToast('Giá bán phải là số hợp lệ từ 0 trở lên!', 'warning');
+          return;
         }
-      });
 
-      closeModal();
-      
-      // Call async save (handles loading screen automatically inside controller)
-      await this.controller.handleUpdateRecipeAndImage(drink.id, newPrice, finalRecipe, this.uploadedImageBase64);
-    });
+        // Recalibrate and read final quantity input values
+        saveInputValues();
+
+        // Clean out items with 0 quantities
+        const finalRecipe = {};
+        Object.keys(this.currentRecipeEdit).forEach(k => {
+          if (this.currentRecipeEdit[k] > 0) {
+            finalRecipe[k] = this.currentRecipeEdit[k];
+          }
+        });
+
+        closeModal();
+        
+        // Call async save (handles loading screen automatically inside controller)
+        await this.controller.handleUpdateRecipeAndImage(drink.id, newPrice, finalRecipe, uploadedImageBase64);
+      });
+    }
   }
 
-  // ==========================================================================
-  // ADD MENU MODAL
-  // ==========================================================================
-  openAddMenuModal() {
-    const mount = this.container.querySelector('#menu-modals-mount');
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
+// ==========================================================================
+// ADD MENU MODAL
+// ==========================================================================
+openAddMenuModal() {
+  const mount = this.container.querySelector('#menu-modals-mount');
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
 
-    overlay.innerHTML = `
+  overlay.innerHTML = `
       <div class="modal-content">
         <div class="drawer-handle"></div>
         <div class="modal-header">
@@ -443,60 +511,60 @@ export class MenuView {
       </div>
     `;
 
-    mount.appendChild(overlay);
+  mount.appendChild(overlay);
 
-    const closeModal = () => {
-      overlay.remove();
-    };
+  const closeModal = () => {
+    overlay.remove();
+  };
 
-    overlay.querySelector('.btn-close-modal').addEventListener('click', closeModal);
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) closeModal();
-    });
+  overlay.querySelector('.btn-close-modal').addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal();
+  });
 
-    const categorySelect = overlay.querySelector('#add-menu-category');
-    const populateCategoriesDropdown = (selectEl) => {
-      const categories = this.controller.db.getTable('categories');
-      selectEl.innerHTML = categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
-    };
+  const categorySelect = overlay.querySelector('#add-menu-category');
+  const populateCategoriesDropdown = (selectEl) => {
+    const categories = this.controller.db.getTable('categories');
+    selectEl.innerHTML = categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
+  };
 
-    populateCategoriesDropdown(categorySelect);
+  populateCategoriesDropdown(categorySelect);
 
-    overlay.querySelector('#btn-manage-categories').addEventListener('click', () => {
-      this.openManageCategoriesModal(populateCategoriesDropdown);
-    });
+  overlay.querySelector('#btn-manage-categories').addEventListener('click', () => {
+    this.openManageCategoriesModal(populateCategoriesDropdown);
+  });
 
-    overlay.querySelector('#add-menu-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const name = overlay.querySelector('#add-menu-name').value.trim();
-      const price = Number(overlay.querySelector('#add-menu-price').value);
-      const category = overlay.querySelector('#add-menu-category').value;
-      const emoji = overlay.querySelector('#add-menu-emoji').value;
+  overlay.querySelector('#add-menu-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = overlay.querySelector('#add-menu-name').value.trim();
+    const price = Number(overlay.querySelector('#add-menu-price').value);
+    const category = overlay.querySelector('#add-menu-category').value;
+    const emoji = overlay.querySelector('#add-menu-emoji').value;
 
-      if (!category) {
-        this.controller.viewManager.showToast('Vui lòng tạo ít nhất một phân nhóm!', 'warning');
-        return;
-      }
+    if (!category) {
+      this.controller.viewManager.showToast('Vui lòng tạo ít nhất một phân nhóm!', 'warning');
+      return;
+    }
 
-      closeModal();
-      await this.controller.handleAddMenuItem(name, price, category, emoji);
-    });
-  }
+    closeModal();
+    await this.controller.handleAddMenuItem(name, price, category, emoji);
+  });
+}
 
-  openManageCategoriesModal(onUpdateCallback) {
-    const mount = this.container.querySelector('#menu-modals-mount');
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
-    overlay.style.zIndex = '1000'; // Make sure it overlays the add modal
+openManageCategoriesModal(onUpdateCallback) {
+  const mount = this.container.querySelector('#menu-modals-mount');
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.style.zIndex = '1000'; // Make sure it overlays the add modal
 
-    const drawCategoriesList = () => {
-      const listContainer = overlay.querySelector('#categories-list-mount');
-      const categories = this.controller.db.getTable('categories');
-      if (categories.length === 0) {
-        listContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 10px;">Chưa có phân nhóm nào.</div>`;
-        return;
-      }
-      listContainer.innerHTML = categories.map(cat => `
+  const drawCategoriesList = () => {
+    const listContainer = overlay.querySelector('#categories-list-mount');
+    const categories = this.controller.db.getTable('categories');
+    if (categories.length === 0) {
+      listContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 10px;">Chưa có phân nhóm nào.</div>`;
+      return;
+    }
+    listContainer.innerHTML = categories.map(cat => `
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-app); border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 6px; gap: 8px;">
           <input type="text" class="input-field cat-name-input" data-id="${cat.id}" value="${cat.name}" style="flex: 1; border: none; background: transparent; padding: 0; font-weight: 600; font-size: 14px; color: var(--text-main);">
           <div style="display: flex; gap: 4px; align-items: center;">
@@ -506,22 +574,48 @@ export class MenuView {
         </div>
       `).join('');
 
-      // Add input listeners
-      listContainer.querySelectorAll('.cat-name-input').forEach(input => {
-        const catId = input.getAttribute('data-id');
-        const saveBtn = listContainer.querySelector(`.btn-save-cat[data-id="${catId}"]`);
-        input.addEventListener('input', () => {
-          saveBtn.style.display = 'inline-block';
-        });
-        saveBtn.addEventListener('click', async () => {
-          const newName = input.value.trim();
-          if (!newName) return;
-          this.controller.viewManager.showLoading('Đang sửa phân nhóm...');
-          const success = await this.controller.db.updateCategory(catId, newName);
+    // Add input listeners
+    listContainer.querySelectorAll('.cat-name-input').forEach(input => {
+      const catId = input.getAttribute('data-id');
+      const saveBtn = listContainer.querySelector(`.btn-save-cat[data-id="${catId}"]`);
+      input.addEventListener('input', () => {
+        saveBtn.style.display = 'inline-block';
+      });
+      saveBtn.addEventListener('click', async () => {
+        const newName = input.value.trim();
+        if (!newName) return;
+        this.controller.viewManager.showLoading('Đang sửa phân nhóm...');
+        const success = await this.controller.db.updateCategory(catId, newName);
+        this.controller.viewManager.hideLoading();
+        if (success) {
+          this.controller.viewManager.showToast('Đã cập nhật phân nhóm!', 'success');
+          saveBtn.style.display = 'none';
+          this.renderCategoryTabs(); // Re-render main categories tabs
+          this.renderMenuList(); // Refresh item card details (e.g. if category names update)
+          if (typeof onUpdateCallback === 'function') {
+            const parentSelect = this.container.querySelector('#add-menu-category');
+            if (parentSelect) onUpdateCallback(parentSelect);
+          }
+        }
+      });
+    });
+
+    // Wire delete category
+    listContainer.querySelectorAll('.btn-delete-cat').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const catId = btn.getAttribute('data-id');
+        this.controller.viewManager.showConfirm('Bạn có chắc chắn muốn xóa phân nhóm này? Lựa chọn này không xóa đồ uống trong nhóm.', async () => {
+          this.controller.viewManager.showLoading('Đang xóa phân nhóm...');
+          const success = await this.controller.db.deleteCategory(catId);
           this.controller.viewManager.hideLoading();
           if (success) {
-            this.controller.viewManager.showToast('Đã cập nhật phân nhóm!', 'success');
-            saveBtn.style.display = 'none';
+            this.controller.viewManager.showToast('Đã xóa phân nhóm!', 'warning');
+            drawCategoriesList();
+            if (this.activeCategory === catId) {
+              this.activeCategory = 'all'; // Reset active filter if selected group is deleted
+            }
+            this.renderCategoryTabs();
+            this.renderMenuList();
             if (typeof onUpdateCallback === 'function') {
               const parentSelect = this.container.querySelector('#add-menu-category');
               if (parentSelect) onUpdateCallback(parentSelect);
@@ -529,29 +623,10 @@ export class MenuView {
           }
         });
       });
+    });
+  };
 
-      // Wire delete category
-      listContainer.querySelectorAll('.btn-delete-cat').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const catId = btn.getAttribute('data-id');
-          this.controller.viewManager.showConfirm('Bạn có chắc chắn muốn xóa phân nhóm này? Lựa chọn này không xóa đồ uống trong nhóm.', async () => {
-            this.controller.viewManager.showLoading('Đang xóa phân nhóm...');
-            const success = await this.controller.db.deleteCategory(catId);
-            this.controller.viewManager.hideLoading();
-            if (success) {
-              this.controller.viewManager.showToast('Đã xóa phân nhóm!', 'warning');
-              drawCategoriesList();
-              if (typeof onUpdateCallback === 'function') {
-                const parentSelect = this.container.querySelector('#add-menu-category');
-                if (parentSelect) onUpdateCallback(parentSelect);
-              }
-            }
-          });
-        });
-      });
-    };
-
-    overlay.innerHTML = `
+  overlay.innerHTML = `
       <div class="modal-content" style="max-width: 340px; align-self: center; border-radius: var(--radius-lg);">
         <div class="drawer-handle"></div>
         <div class="modal-header">
@@ -568,71 +643,72 @@ export class MenuView {
       </div>
     `;
 
-    mount.appendChild(overlay);
+  mount.appendChild(overlay);
 
-    const close = () => overlay.remove();
-    overlay.querySelector('.btn-close-modal').addEventListener('click', close);
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) close();
-    });
+  const close = () => overlay.remove();
+  overlay.querySelector('.btn-close-modal').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) close();
+  });
 
-    overlay.querySelector('#btn-add-category-confirm').addEventListener('click', async () => {
-      const input = overlay.querySelector('#new-category-name');
-      const name = input.value.trim();
-      if (!name) return;
+  overlay.querySelector('#btn-add-category-confirm').addEventListener('click', async () => {
+    const input = overlay.querySelector('#new-category-name');
+    const name = input.value.trim();
+    if (!name) return;
 
-      this.controller.viewManager.showLoading('Đang thêm phân nhóm...');
-      const success = await this.controller.db.addCategory(name);
-      this.controller.viewManager.hideLoading();
-      if (success) {
-        input.value = '';
-        this.controller.viewManager.showToast(`Đã thêm phân nhóm "${name}" thành công!`, 'success');
-        drawCategoriesList();
-        if (typeof onUpdateCallback === 'function') {
-          const parentSelect = this.container.querySelector('#add-menu-category');
-          if (parentSelect) onUpdateCallback(parentSelect);
+    this.controller.viewManager.showLoading('Đang thêm phân nhóm...');
+    const success = await this.controller.db.addCategory(name);
+    this.controller.viewManager.hideLoading();
+    if (success) {
+      input.value = '';
+      this.controller.viewManager.showToast(`Đã thêm phân nhóm "${name}" thành công!`, 'success');
+      drawCategoriesList();
+      this.renderCategoryTabs(); // Re-render main categories tabs
+      if (typeof onUpdateCallback === 'function') {
+        const parentSelect = this.container.querySelector('#add-menu-category');
+        if (parentSelect) onUpdateCallback(parentSelect);
+      }
+    }
+  });
+
+  drawCategoriesList();
+}
+
+// File size compressor helper (Canvas scales image to max 200x200px and 70% quality JPEG)
+compressImage(file, callback) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX_WIDTH = 200;
+      const MAX_HEIGHT = 200;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > MAX_WIDTH) {
+          height *= MAX_WIDTH / width;
+          width = MAX_WIDTH;
+        }
+      } else {
+        if (height > MAX_HEIGHT) {
+          width *= MAX_HEIGHT / height;
+          height = MAX_HEIGHT;
         }
       }
-    });
 
-    drawCategoriesList();
-  }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
 
-  // File size compressor helper (Canvas scales image to max 200x200px and 70% quality JPEG)
-  compressImage(file, callback) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 200;
-        const MAX_HEIGHT = 200;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Convert to highly compact JPEG (8-15KB size)
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-        callback(dataUrl);
-      };
-      img.src = e.target.result;
+      // Convert to highly compact JPEG (8-15KB size)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      callback(dataUrl);
     };
-    reader.readAsDataURL(file);
-  }
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
 }

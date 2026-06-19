@@ -109,7 +109,7 @@ export class POSModel {
       totalPrice: total,
       cogs: totalCogs,
       paymentMethod: paymentMethod,
-      status: 'completed',
+      status: 'preparing',
       cashReceived: paymentMethod === 'Tiền mặt' ? cashReceived : total,
       cashChange: cashChange
     };

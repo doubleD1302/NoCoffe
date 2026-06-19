@@ -7,12 +7,26 @@ async function run() {
     await mongoose.connect(MONGODB_URI);
     console.log('Connected to MongoDB!');
     
-    // Check menu items in no-coffee-usr-65166121
-    const testDb = mongoose.connection.useDb('no-coffee-usr-65166121');
-    const MenuItemSchema = new mongoose.Schema({ id: String, name: String });
-    const MenuItem = testDb.model('MenuItem', MenuItemSchema);
-    const menuItems = await MenuItem.find({});
-    console.log('test_manager_xyz3 (usr-65166121) menu items count:', menuItems.length);
+    const admin = mongoose.connection.db.admin();
+    const dbsList = await admin.listDatabases();
+    console.log('All databases in MongoDB:');
+    
+    for (const dbInfo of dbsList.databases) {
+      if (dbInfo.name.startsWith('no-coffee')) {
+        const db = mongoose.connection.useDb(dbInfo.name);
+        // List collections
+        const collections = await db.db.listCollections().toArray();
+        console.log(`\nDatabase: ${dbInfo.name}`);
+        for (const col of collections) {
+          const count = await db.db.collection(col.name).countDocuments();
+          console.log(`  Collection: ${col.name} -> Count: ${count}`);
+          if (col.name === 'menuitems') {
+            const sample = await db.db.collection(col.name).findOne();
+            console.log('  Sample MenuItem:', sample);
+          }
+        }
+      }
+    }
 
     await mongoose.disconnect();
   } catch (e) {

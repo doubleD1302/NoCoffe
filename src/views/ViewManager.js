@@ -158,7 +158,7 @@ export class ViewManager {
     tabs.forEach(tab => {
       const viewId = tab.getAttribute('data-view');
       
-      if (viewId === 'stats-view' || viewId === 'menu-view' || viewId === 'inventory-view') {
+      if (viewId === 'stats-view' || viewId === 'inventory-view') {
         // Manager or Dev-admin only
         if (user.role === 'employee') {
           tab.style.display = 'none';

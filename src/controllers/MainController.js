@@ -269,8 +269,8 @@ export class MainController {
       this.viewManager.updateHeader(targetUser);
       this.viewManager.applyRoleRestrictions(targetUser);
 
-      // If employee selected and in stats/menu/inventory view, redirect to Home
-      if (roleName === 'employee' && (this.activeTab === 'stats-view' || this.activeTab === 'menu-view' || this.activeTab === 'inventory-view')) {
+      // If employee selected and in stats/inventory view, redirect to Home (employees can now access menu-view)
+      if (roleName === 'employee' && (this.activeTab === 'stats-view' || this.activeTab === 'inventory-view')) {
         this.activeTab = 'home-view';
       }
 
@@ -364,6 +364,69 @@ export class MainController {
 
   getOrdersHistory() {
     return this.posModel.getOrdersHistory();
+  }
+
+  async handleUpdateOrderStatus(id, status) {
+    this.viewManager.showLoading('Đang cập nhật trạng thái đơn hàng...');
+    try {
+      const success = await this.db.updateOrderStatus(id, status);
+      if (success) {
+        this.viewManager.showToast(`Đã cập nhật trạng thái đơn hàng thành công!`, 'success');
+        this.switchTab(this.activeTab); // refresh current view
+        return true;
+      }
+    } catch (e) {
+      console.error(e);
+      this.viewManager.showToast('Lỗi cập nhật trạng thái đơn hàng', 'danger');
+    } finally {
+      this.viewManager.hideLoading();
+    }
+    return false;
+  }
+
+  async handleRollbackOrderToCart(orderId) {
+    this.viewManager.showLoading('Đang khôi phục đơn hàng về giỏ hàng...');
+    try {
+      const orders = this.db.getTable('orders');
+      const order = orders.find(o => o.id === orderId);
+      if (!order) {
+        this.viewManager.showToast('Không tìm thấy đơn hàng', 'danger');
+        return false;
+      }
+
+      // 1. Cancel the order on backend (restores stock)
+      const success = await this.db.updateOrderStatus(orderId, 'cancelled');
+      if (success) {
+        // 2. Clear current cart
+        this.posModel.clearCart();
+        
+        // 3. Load items from order back to cart
+        order.items.forEach(item => {
+          this.posModel.cart.push({
+            id: item.id,
+            name: item.name,
+            emoji: item.emoji || '☕',
+            price: item.price,
+            qty: item.qty,
+            size: item.size,
+            sugar: item.sugar,
+            ice: item.ice,
+            notes: item.notes,
+            recipe: item.recipe
+          });
+        });
+
+        this.viewManager.showToast(`Đã hủy đơn ${orderId} và khôi phục các món vào giỏ hàng!`, 'success');
+        this.switchTab('pos-view');
+        return true;
+      }
+    } catch (e) {
+      console.error(e);
+      this.viewManager.showToast('Lỗi khôi phục đơn hàng', 'danger');
+    } finally {
+      this.viewManager.hideLoading();
+    }
+    return false;
   }
 
   // ==========================================================================

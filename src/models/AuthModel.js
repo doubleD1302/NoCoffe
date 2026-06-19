@@ -10,7 +10,7 @@ export class AuthModel {
   }
 
   setCurrentUser(user) {
-    this.db.data.config.activeUser = user;
+    this.db.setActiveUser(user);
     this.db.saveConfig(undefined, user); // Fire-and-forget sync config to server
   }
 

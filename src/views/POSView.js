@@ -41,8 +41,18 @@ export class POSView {
           <!-- Rendered dynamically -->
         </div>
 
-        <!-- Drink Grid -->
-        <div class="menu-grid" id="pos-menu-grid"></div>
+        <!-- Catalog Area -->
+        <div class="pos-catalog-container" style="flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden;">
+          <div class="view-title-row" style="padding: 16px 14px 0 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <h2 style="margin: 0; font-size: 18px; font-weight: 800; color: var(--primary-dark);">Bán Hàng (POS)</h2>
+            <button class="btn-warning" id="btn-open-order-tracker" style="padding: 6px 12px; font-size: 12px; border-radius: 20px; display: flex; align-items: center; gap: 6px; font-weight: 700; height: 32px; background: var(--warning); border-color: var(--warning); color: white;">
+              <i class="bi bi-clock-history"></i> Đơn đang làm (<span id="pos-preparing-count">0</span>)
+            </button>
+          </div>
+
+          <!-- Drink Grid -->
+          <div class="menu-grid" id="pos-menu-grid" style="flex: 1; padding-top: 10px;"></div>
+        </div>
 
         <!-- Floating Cart Trigger Pill -->
         <div class="floating-cart-trigger hidden" id="pos-cart-trigger">
@@ -62,6 +72,7 @@ export class POSView {
     this.renderMenuGrid();
     this.initCoreEvents();
     this.updateCartTrigger();
+    this.updateOrderTrackerBadge();
   }
 
   renderCategoryTabs() {
@@ -121,14 +132,21 @@ export class POSView {
     trigger.addEventListener('click', () => {
       this.openCartModal();
     });
+
+    const orderTrackerTrigger = this.container.querySelector('#btn-open-order-tracker');
+    if (orderTrackerTrigger) {
+      orderTrackerTrigger.addEventListener('click', () => {
+        this.openOrderTrackerModal();
+      });
+    }
   }
 
   renderMenuGrid() {
     const grid = this.container.querySelector('#pos-menu-grid');
     const menu = this.controller.getMenu();
     const inventory = this.controller.getInventoryModel();
-    
-    const filtered = menu.filter(item => 
+
+    const filtered = menu.filter(item =>
       this.activeCategory === 'all' || item.category === this.activeCategory
     );
 
@@ -167,6 +185,7 @@ export class POSView {
       });
     });
 
+    console.log(groupedMenu)
     grid.innerHTML = groupedMenu.map((group, index) => {
       // Sort variants: M first, then L
       group.variants.sort((a, b) => {
@@ -189,8 +208,8 @@ export class POSView {
         }
       });
 
-      const warningBadge = hasLowStock 
-        ? `<div class="menu-card-warning" title="Nguyên liệu sắp hết"><i class="bi bi-exclamation-triangle-fill"></i></div>` 
+      const warningBadge = hasLowStock
+        ? `<div class="menu-card-warning" title="Nguyên liệu sắp hết"><i class="bi bi-exclamation-triangle-fill"></i></div>`
         : '';
 
       // Check category placeholder gradient
@@ -201,21 +220,26 @@ export class POSView {
       else if (group.category === 'matcha') gradientClass = 'placeholder-gradient-matcha';
       else if (group.category === 'cacao') gradientClass = 'placeholder-gradient-cacao';
 
-      // Check if image exists, otherwise draw emoji on gradient
-      const thumbnailHtml = group.image 
-        ? `<img src="${group.image}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;" alt="${group.name}">`
-        : `<div class="menu-card-thumbnail ${gradientClass}" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border-radius: 12px;"><span class="emoji-span">${group.emoji}</span></div>`;
+      // Check if image exists, otherwise draw square warning box with text
+      const thumbnailHtml = group.image
+        ? `<div class="menu-card-thumbnail">
+            <img src="${group.image}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;" alt="${group.name}">
+           </div>`
+        : `<div class="menu-card-thumbnail ${gradientClass}" style="display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 10px; text-align: center; gap: 4px;">
+            <i class="bi bi-image" style="font-size: 20px; color: var(--text-light);"></i>
+            <span style="font-size: 11px; font-weight: 600; color: var(--text-muted); line-height: 1.2;">Vui lòng thêm ảnh mô tả</span>
+           </div>`;
 
       // Price range text
       const prices = group.variants.map(v => v.price);
       const minPrice = Math.min(...prices);
-      
+
       const priceText = `${minPrice.toLocaleString('vi-VN')} <span style="text-decoration: underline;">đ</span>`;
 
       return `
         <div class="menu-card" data-index="${index}">
           ${warningBadge}
-          <div class="menu-card-thumbnail">${thumbnailHtml}</div>
+          ${thumbnailHtml}
           <div class="menu-card-info-row">
             <div class="menu-card-details">
               <span class="menu-card-name">${group.name}</span>
@@ -261,7 +285,7 @@ export class POSView {
     const mount = this.container.querySelector('#pos-modals-mount');
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
-    
+
     // Sort variants: M first, then L
     group.variants.sort((a, b) => {
       if (a.size === 'M' && b.size === 'L') return -1;
@@ -367,10 +391,10 @@ export class POSView {
     const updateModalState = () => {
       const activeSizeBtn = overlay.querySelector('#modifier-size .active');
       const selectedSize = activeSizeBtn ? activeSizeBtn.getAttribute('data-size') : 'M';
-      
+
       let variantDoc = null;
       let computedPrice = 0;
-      
+
       const exactVariant = group.variants.find(v => v.size === selectedSize);
       if (exactVariant) {
         variantDoc = exactVariant;
@@ -385,13 +409,13 @@ export class POSView {
 
       const recipeListContainer = overlay.querySelector('#modifier-recipe-list');
       const inventory = this.controller.getInventoryModel();
-      
+
       if (!variantDoc.recipe || Object.keys(variantDoc.recipe).length === 0) {
         recipeListContainer.innerHTML = `<div style="font-size: 11px; color: var(--text-light); text-align: center;">Chưa cấu hình công thức cho size này.</div>`;
       } else {
         const recipeObj = typeof variantDoc.recipe.entries === 'function' ? Object.fromEntries(variantDoc.recipe) : variantDoc.recipe;
         const items = [];
-        
+
         Object.keys(recipeObj).forEach(ingId => {
           let qty = recipeObj[ingId];
           const ing = inventory.getIngredient(ingId);
@@ -408,9 +432,9 @@ export class POSView {
             `);
           }
         });
-        
-        recipeListContainer.innerHTML = items.length > 0 
-          ? items.join('') 
+
+        recipeListContainer.innerHTML = items.length > 0
+          ? items.join('')
           : `<div style="font-size: 11px; color: var(--text-light); text-align: center;">Chưa cấu hình công thức cho size này.</div>`;
       }
     };
@@ -421,7 +445,7 @@ export class POSView {
         btn.addEventListener('click', () => {
           pContainer.querySelectorAll('.option-pill-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
-          
+
           if (containerId === 'modifier-size') {
             updateModalState();
           }
@@ -475,7 +499,7 @@ export class POSView {
     const mount = this.container.querySelector('#pos-modals-mount');
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
-    
+
     const itemsHtml = cart.map((item, index) => {
       const descDetails = `Size ${item.size} • Đường ${item.sugar} • Đá ${item.ice}${item.notes ? ` • ${item.notes}` : ''}`;
       const { baseName } = parseDrinkName(item.name);
@@ -579,7 +603,7 @@ export class POSView {
     const mount = this.container.querySelector('#pos-modals-mount');
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
-    
+
     overlay.innerHTML = `
       <div class="modal-content" style="max-height: 95%;">
         <div class="drawer-handle"></div>
@@ -606,8 +630,8 @@ export class POSView {
           
           <div class="option-pills" style="margin-bottom: 16px;">
             <button class="option-pill-btn btn-quick-cash" data-val="${total}">Đủ (${total.toLocaleString('vi-VN')}đ)</button>
-            <button class="option-pill-btn btn-quick-cash" data-val="${Math.ceil(total/10000)*10000}">Chẵn chục</button>
-            <button class="option-pill-btn btn-quick-cash" data-val="${Math.ceil(total/50000)*50000}">Chẵn 50k</button>
+            <button class="option-pill-btn btn-quick-cash" data-val="${Math.ceil(total / 10000) * 10000}">Chẵn chục</button>
+            <button class="option-pill-btn btn-quick-cash" data-val="${Math.ceil(total / 50000) * 50000}">Chẵn 50k</button>
             <button class="option-pill-btn btn-quick-cash" data-val="100000">100.000đ</button>
             <button class="option-pill-btn btn-quick-cash" data-val="200000">200.000đ</button>
             <button class="option-pill-btn btn-quick-cash" data-val="500000">500.000đ</button>
@@ -712,14 +736,14 @@ export class POSView {
 
     let activeMethod = 'Tiền mặt';
     const methodPills = overlay.querySelector('#checkout-method');
-    
+
     methodPills.querySelectorAll('.option-pill-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         methodPills.querySelectorAll('.option-pill-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        
+
         activeMethod = btn.getAttribute('data-val');
-        
+
         cashPanel.classList.add('hidden');
         qrPanel.classList.add('hidden');
         cardPanel.classList.add('hidden');
@@ -736,7 +760,7 @@ export class POSView {
 
     overlay.querySelector('#btn-complete-order').addEventListener('click', async () => {
       const cashVal = Number(inputCash.value) || total;
-      
+
       if (activeMethod === 'Tiền mặt' && cashVal < total) {
         this.controller.viewManager.showToast('Khách đưa thiếu tiền mặt!', 'danger');
         return;
@@ -746,5 +770,240 @@ export class POSView {
       await this.controller.processCheckout(activeMethod, cashVal);
       this.updateCartTrigger();
     });
+  }
+
+  updateOrderTrackerBadge() {
+    const badge = this.container.querySelector('#pos-preparing-count');
+    if (!badge) return;
+    const orders = this.controller.getOrdersHistory();
+    const preparingCount = orders.filter(o => o.status === 'preparing').length;
+    badge.innerText = preparingCount;
+  }
+
+  openOrderTrackerModal() {
+    const mount = this.container.querySelector('#pos-modals-mount');
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '999';
+
+    let activeSubTab = 'preparing'; // 'preparing' or 'completed'
+
+    const drawModalContent = () => {
+      const orders = this.controller.getOrdersHistory();
+      const inventory = this.controller.getInventoryModel();
+
+      const preparingOrders = orders.filter(o => o.status === 'preparing');
+      const completedOrders = orders.filter(o => o.status === 'completed');
+
+      const isPrep = activeSubTab === 'preparing';
+      const activeList = isPrep ? preparingOrders : completedOrders;
+
+      let listHtml = '';
+      if (activeList.length === 0) {
+        listHtml = `<div style="text-align: center; color: var(--text-muted); padding: 40px 0;"><i class="bi bi-receipt" style="font-size: 32px; color: var(--text-light);"></i><br><span style="font-size: 12px; margin-top: 8px; display: inline-block;">Không có đơn hàng nào trong danh sách này.</span></div>`;
+      } else {
+        listHtml = activeList.map(order => {
+          const timeStr = new Date(order.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+          const itemsListHtml = order.items.map((item, idx) => {
+            // Recipe checklist
+            const recipeItems = [];
+            if (item.recipe) {
+              const recipeObj = typeof item.recipe.entries === 'function' ? Object.fromEntries(item.recipe) : item.recipe;
+              Object.keys(recipeObj).forEach(ingId => {
+                let qty = recipeObj[ingId];
+                const ing = inventory.getIngredient(ingId);
+                if (ing && qty > 0) {
+                  const isLVariant = item.id.endsWith('-l') || item.name.endsWith('(L)');
+                  if (item.size === 'L' && !isLVariant && ['cf', 'sua', 'suatuoi', 'duong'].includes(ingId)) {
+                    qty = Math.ceil(qty * 1.3);
+                  }
+                  recipeItems.push(`
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; padding: 4px 6px; border-bottom: 1px dashed var(--border-color); align-items: center;">
+                      <span><input type="checkbox" style="width: 13px; height: 13px; margin-right: 6px; vertical-align: middle;"> ${ing.name}</span>
+                      <strong>${qty} ${ing.unit}</strong>
+                    </div>
+                  `);
+                }
+              });
+            }
+
+            const recipeCheckerHtml = recipeItems.length > 0
+              ? `<div class="recipe-checker-box hidden" id="recipe-${order.id}-${idx}" style="margin-top: 6px; padding: 6px; background: var(--bg-app); border: 1.5px solid var(--border-color); border-radius: var(--radius-sm); max-height: 150px; overflow-y: auto;">
+                  <div style="font-size: 9px; font-weight: bold; color: var(--primary-dark); text-transform: uppercase; margin-bottom: 4px; padding-bottom: 2px; border-bottom: 1px solid var(--border-color);">Định lượng pha chế</div>
+                  ${recipeItems.join('')}
+                 </div>`
+              : '';
+
+            return `
+              <div style="padding: 6px 0; border-bottom: 1px solid var(--border-color);">
+                <div class="tracker-item-row" data-order-id="${order.id}" data-idx="${idx}" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                  <div>
+                    <span style="font-size: 13px; font-weight: 700; color: var(--text-main);">${item.name} (${item.size || 'M'})</span><br>
+                    <span style="font-size: 10px; color: var(--text-muted);">Đường: ${item.sugar} • Đá: ${item.ice}${item.notes ? ` • ${item.notes}` : ''}</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 12px; font-weight: 700; color: var(--text-main);">x${item.qty}</span>
+                    ${recipeCheckerHtml ? `<i class="bi bi-chevron-down toggle-recipe-arrow" style="font-size: 12px; color: var(--text-light);"></i>` : ''}
+                  </div>
+                </div>
+                ${recipeCheckerHtml}
+              </div>
+            `;
+          }).join('');
+
+          // Actions
+          let actionsHtml = '';
+          if (isPrep) {
+            actionsHtml = `
+              <button class="btn-danger btn-tracker-cancel" data-id="${order.id}" style="padding: 6px 12px; font-size: 11px; border-radius: var(--radius-sm); font-weight: 600;"><i class="bi bi-x-circle-fill"></i> Hủy</button>
+              <button class="btn-secondary btn-tracker-rollback" data-id="${order.id}" style="padding: 6px 12px; font-size: 11px; border-radius: var(--radius-sm); font-weight: 600;"><i class="bi bi-arrow-counterclockwise"></i> Sửa/Trả giỏ hàng</button>
+              <button class="btn-primary btn-tracker-complete" data-id="${order.id}" style="padding: 6px 14px; font-size: 11px; border-radius: var(--radius-sm); font-weight: 700; background: var(--success); border-color: var(--success);"><i class="bi bi-check-circle-fill"></i> Hoàn thành</button>
+            `;
+          } else {
+            actionsHtml = `
+              <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;"><i class="bi bi-check-lg" style="color: var(--success);"></i> Đã hoàn thành</span>
+              <button class="btn-secondary btn-tracker-reprep" data-id="${order.id}" style="padding: 6px 12px; font-size: 11px; border-radius: var(--radius-sm); font-weight: 600; margin-left: auto;"><i class="bi bi-arrow-repeat"></i> Làm lại ca chuẩn bị</button>
+            `;
+          }
+
+          return `
+            <div style="background: var(--surface); border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 14px; margin-bottom: 12px; box-shadow: var(--shadow-sm);">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px dashed var(--border-color); padding-bottom: 8px; margin-bottom: 8px;">
+                <div>
+                  <strong style="font-size: 14px; color: var(--primary-dark);">${order.id}</strong>
+                  <span style="font-size: 11px; color: var(--text-muted); margin-left: 6px;">${timeStr} • ${order.paymentMethod}</span>
+                </div>
+                <strong style="font-size: 14px; color: var(--brand-pink-dark);">${order.totalPrice.toLocaleString('vi-VN')}đ</strong>
+              </div>
+              
+              <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px;">
+                ${itemsListHtml}
+              </div>
+
+              <div style="display: flex; justify-content: flex-end; gap: 8px; align-items: center; border-top: 1.5px dashed var(--border-color); padding-top: 10px;">
+                ${actionsHtml}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      overlay.innerHTML = `
+        <div class="modal-content" style="max-height: 90%; width: 95%; max-width: 480px; align-self: center;">
+          <div class="drawer-handle"></div>
+          <div class="modal-header" style="border-bottom: none; padding-bottom: 0;">
+            <h3>Theo dõi trạng thái đơn hàng</h3>
+            <button class="btn-icon-small btn-close-modal">×</button>
+          </div>
+
+          <!-- Tabs -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--bg-app); border-radius: var(--radius-md); margin: 16px 0 12px 0; border: 1px solid var(--border-color);">
+            <button class="tab-btn-tracking ${isPrep ? 'active' : ''}" data-tab="preparing" style="border: none; padding: 8px 4px; font-size: 12px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; background: ${isPrep ? 'var(--primary)' : 'transparent'}; color: ${isPrep ? 'white' : 'var(--text-muted)'}; text-align: center;">
+              🛎️ Đang chuẩn bị (${preparingOrders.length})
+            </button>
+            <button class="tab-btn-tracking ${!isPrep ? 'active' : ''}" data-tab="completed" style="border: none; padding: 8px 4px; font-size: 12px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer; background: ${!isPrep ? 'var(--primary)' : 'transparent'}; color: ${!isPrep ? 'white' : 'var(--text-muted)'}; text-align: center;">
+              ✅ Đã hoàn thành (${completedOrders.length})
+            </button>
+          </div>
+
+          <!-- Orders List Container -->
+          <div id="tracker-orders-list-mount" style="flex: 1; overflow-y: auto; max-height: 380px; padding-right: 4px; margin-bottom: 8px;">
+            ${listHtml}
+          </div>
+        </div>
+      `;
+
+      // Wire Tab clicks
+      overlay.querySelectorAll('.tab-btn-tracking').forEach(btn => {
+        btn.addEventListener('click', () => {
+          activeSubTab = btn.getAttribute('data-tab');
+          drawModalContent();
+        });
+      });
+
+      // Wire items click to toggle recipe display
+      overlay.querySelectorAll('.tracker-item-row').forEach(row => {
+        row.addEventListener('click', () => {
+          const orderId = row.getAttribute('data-order-id');
+          const idx = row.getAttribute('data-idx');
+          const recipeBox = overlay.querySelector(`#recipe-${orderId}-${idx}`);
+          const arrow = row.querySelector('.toggle-recipe-arrow');
+          if (recipeBox) {
+            recipeBox.classList.toggle('hidden');
+            if (arrow) {
+              if (recipeBox.classList.contains('hidden')) {
+                arrow.className = 'bi bi-chevron-down toggle-recipe-arrow';
+              } else {
+                arrow.className = 'bi bi-chevron-up toggle-recipe-arrow';
+              }
+            }
+          }
+        });
+      });
+
+      // Wire complete action
+      overlay.querySelectorAll('.btn-tracker-complete').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          const success = await this.controller.handleUpdateOrderStatus(id, 'completed');
+          if (success) {
+            this.updateOrderTrackerBadge();
+            drawModalContent();
+          }
+        });
+      });
+
+      // Wire cancel action
+      overlay.querySelectorAll('.btn-tracker-cancel').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          this.controller.viewManager.showConfirm('Bạn có chắc chắn muốn hủy đơn hàng này? Số lượng nguyên liệu sẽ được khôi phục vào kho.', async () => {
+            const success = await this.controller.handleUpdateOrderStatus(id, 'cancelled');
+            if (success) {
+              this.updateOrderTrackerBadge();
+              drawModalContent();
+            }
+          });
+        });
+      });
+
+      // Wire rollback action
+      overlay.querySelectorAll('.btn-tracker-rollback').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-id');
+          this.controller.viewManager.showConfirm('Bạn muốn đưa các món của đơn này quay lại Giỏ hàng để sửa đổi? Đơn hiện tại sẽ bị hủy.', async () => {
+            closeModal();
+            await this.controller.handleRollbackOrderToCart(id);
+            this.updateOrderTrackerBadge();
+          });
+        });
+      });
+
+      // Wire re-prep action
+      overlay.querySelectorAll('.btn-tracker-reprep').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          const success = await this.controller.handleUpdateOrderStatus(id, 'preparing');
+          if (success) {
+            this.updateOrderTrackerBadge();
+            drawModalContent();
+          }
+        });
+      });
+
+      // Wire close modal header
+      overlay.querySelector('.btn-close-modal').addEventListener('click', closeModal);
+    };
+
+    const closeModal = () => {
+      overlay.remove();
+    };
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeModal();
+    });
+
+    drawModalContent();
+    mount.appendChild(overlay);
   }
 }

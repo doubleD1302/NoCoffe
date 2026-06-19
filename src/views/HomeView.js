@@ -517,6 +517,29 @@ export class HomeView {
     overlay.className = 'modal-overlay';
     overlay.style.zIndex = '999';
 
+    // Get unique shifts from database dynamically
+    const shifts = this.controller.getShifts();
+    const uniqueShifts = [];
+    const seen = new Set();
+    shifts.forEach(sh => {
+      const key = `${sh.shiftName}|${sh.timeRange}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueShifts.push({ name: sh.shiftName, timeRange: sh.timeRange });
+      }
+    });
+
+    // Default shifts if empty in DB
+    if (uniqueShifts.length === 0) {
+      uniqueShifts.push({ name: 'Ca sáng', timeRange: '06:00 - 10:00' });
+      uniqueShifts.push({ name: 'Ca trưa', timeRange: '10:00 - 14:00' });
+      uniqueShifts.push({ name: 'Ca chiều', timeRange: '14:00 - 18:00' });
+    }
+
+    const shiftOptionsHtml = uniqueShifts.map(sh => 
+      `<option value="${sh.name}|${sh.timeRange}">${sh.name} (${sh.timeRange})</option>`
+    ).join('');
+
     overlay.innerHTML = `
       <div class="modal-content" style="max-width: 340px; align-self: center; border-radius: var(--radius-lg);">
         <div class="drawer-handle"></div>
@@ -550,9 +573,22 @@ export class HomeView {
           <div class="form-group" id="req-target-shift-group">
             <label for="req-target-shift">Chọn ca trực mong muốn</label>
             <select id="req-target-shift" class="select-field">
-              <option value="Ca sáng|06:30 - 12:30">Ca sáng (06:30 - 12:30)</option>
-              <option value="Ca chiều|12:30 - 18:30">Ca chiều (12:30 - 18:30)</option>
+              ${shiftOptionsHtml}
+              <option value="custom">-- Khác (Tự nhập ca mới) --</option>
             </select>
+          </div>
+
+          <div class="form-group" id="req-custom-shift-group" style="display: none; flex-direction: column; gap: 8px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div>
+                <label for="req-custom-shift-name" style="font-size: 11px; font-weight: bold; color: var(--text-muted);">Tên ca trực</label>
+                <input type="text" id="req-custom-shift-name" class="input-field" placeholder="Ví dụ: Ca tối" value="Ca tối">
+              </div>
+              <div>
+                <label for="req-custom-shift-time" style="font-size: 11px; font-weight: bold; color: var(--text-muted);">Thời gian ca</label>
+                <input type="text" id="req-custom-shift-time" class="input-field" placeholder="Ví dụ: 18:00 - 22:00">
+              </div>
+            </div>
           </div>
 
           <div class="form-group">
@@ -577,14 +613,25 @@ export class HomeView {
 
     const typeSelect = overlay.querySelector('#req-type');
     const shiftGroup = overlay.querySelector('#req-target-shift-group');
+    const targetShiftSelect = overlay.querySelector('#req-target-shift');
+    const customShiftGroup = overlay.querySelector('#req-custom-shift-group');
 
-    typeSelect.addEventListener('change', () => {
+    const updateVisibility = () => {
       if (typeSelect.value === 'off') {
         shiftGroup.style.display = 'none';
+        customShiftGroup.style.display = 'none';
       } else {
         shiftGroup.style.display = 'flex';
+        if (targetShiftSelect.value === 'custom') {
+          customShiftGroup.style.display = 'flex';
+        } else {
+          customShiftGroup.style.display = 'none';
+        }
       }
-    });
+    };
+
+    typeSelect.addEventListener('change', updateVisibility);
+    targetShiftSelect.addEventListener('change', updateVisibility);
 
     overlay.querySelector('#shift-request-form').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -597,10 +644,19 @@ export class HomeView {
       let timeRange = '';
 
       if (type === 'change') {
-        const val = overlay.querySelector('#req-target-shift').value;
-        const parts = val.split('|');
-        shiftName = parts[0];
-        timeRange = parts[1];
+        const val = targetShiftSelect.value;
+        if (val === 'custom') {
+          shiftName = overlay.querySelector('#req-custom-shift-name').value.trim() || 'Ca tự chọn';
+          timeRange = overlay.querySelector('#req-custom-shift-time').value.trim();
+          if (!timeRange) {
+            this.controller.viewManager.showToast('Vui lòng nhập thời gian ca trực!', 'warning');
+            return;
+          }
+        } else {
+          const parts = val.split('|');
+          shiftName = parts[0];
+          timeRange = parts[1];
+        }
       }
 
       close();
@@ -929,7 +985,7 @@ export class HomeView {
 
           <div class="form-group">
             <label for="add-shift-time">Thời gian ca</label>
-            <input type="text" id="add-shift-time" class="input-field" required placeholder="Ví dụ: 06:30 - 12:30">
+            <input type="text" id="add-shift-time" class="input-field" required placeholder="Ví dụ: 06:00 - 10:00">
           </div>
 
           <button type="submit" class="btn-primary" style="height: 40px; margin-top: 8px;">
@@ -1043,7 +1099,7 @@ export class HomeView {
 
           <div class="form-group">
             <label for="edit-shift-time">Thời gian ca</label>
-            <input type="text" id="edit-shift-time" class="input-field" value="${shift.timeRange}" required placeholder="Ví dụ: 06:30 - 12:30" ${isToday ? 'disabled' : ''}>
+            <input type="text" id="edit-shift-time" class="input-field" value="${shift.timeRange}" required placeholder="Ví dụ: 06:00 - 10:00" ${isToday ? 'disabled' : ''}>
           </div>
 
           <div class="form-group">

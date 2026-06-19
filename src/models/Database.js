@@ -37,6 +37,21 @@ export class Database {
         localStorage.setItem('no_coffee_active_user', JSON.stringify(user));
       } else {
         localStorage.removeItem('no_coffee_active_user');
+        // Clear all tenant data on logout to prevent data leak between accounts
+        this.data = {
+          users: [],
+          ingredients: [],
+          menu: [],
+          orders: [],
+          waste: [],
+          shifts: [],
+          shiftRequests: [],
+          attendance: [],
+          config: {
+            bypassLogin: this.data ? this.data.config.bypassLogin : false,
+            activeUser: null
+          }
+        };
       }
     } catch (e) {
       console.error('Lỗi lưu activeUser vào localStorage:', e);
@@ -154,6 +169,24 @@ export class Database {
       }
     } catch (e) {
       console.error(e);
+    }
+    return false;
+  }
+
+  // POST update order status
+  async updateOrderStatus(id, status) {
+    try {
+      const res = await fetch('/api/orders/update-status', {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ id, status })
+      });
+      if (res.ok) {
+        await this.fetchDb();
+        return true;
+      }
+    } catch (e) {
+      console.error('Lỗi khi cập nhật trạng thái đơn hàng:', e);
     }
     return false;
   }

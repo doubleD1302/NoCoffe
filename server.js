@@ -284,20 +284,34 @@ const DEFAULT_MENU = [
 ];
 
 const DEFAULT_SHIFTS = [
-  { id: 'sh-1', dayOfWeek: 1, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: '', employeeName: '' },
-  { id: 'sh-2', dayOfWeek: 1, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: '', employeeName: '' },
-  { id: 'sh-3', dayOfWeek: 2, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: '', employeeName: '' },
-  { id: 'sh-4', dayOfWeek: 2, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: '', employeeName: '' },
-  { id: 'sh-5', dayOfWeek: 3, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: '', employeeName: '' },
-  { id: 'sh-6', dayOfWeek: 3, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: '', employeeName: '' },
-  { id: 'sh-7', dayOfWeek: 4, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: '', employeeName: '' },
-  { id: 'sh-8', dayOfWeek: 4, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: '', employeeName: '' },
-  { id: 'sh-9', dayOfWeek: 5, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: '', employeeName: '' },
-  { id: 'sh-10', dayOfWeek: 5, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: '', employeeName: '' },
-  { id: 'sh-11', dayOfWeek: 6, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: '', employeeName: '' },
-  { id: 'sh-12', dayOfWeek: 6, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: '', employeeName: '' },
-  { id: 'sh-13', dayOfWeek: 0, shiftName: 'Ca sáng', timeRange: '06:30 - 12:30', employeeId: '', employeeName: '' },
-  { id: 'sh-14', dayOfWeek: 0, shiftName: 'Ca chiều', timeRange: '12:30 - 18:30', employeeId: '', employeeName: '' }
+  // Day 1 (Monday)
+  { id: 'sh-1-1', dayOfWeek: 1, shiftName: 'Ca sáng', timeRange: '06:00 - 10:00', employeeId: '', employeeName: '' },
+  { id: 'sh-1-2', dayOfWeek: 1, shiftName: 'Ca trưa', timeRange: '10:00 - 14:00', employeeId: '', employeeName: '' },
+  { id: 'sh-1-3', dayOfWeek: 1, shiftName: 'Ca chiều', timeRange: '14:00 - 18:00', employeeId: '', employeeName: '' },
+  // Day 2 (Tuesday)
+  { id: 'sh-2-1', dayOfWeek: 2, shiftName: 'Ca sáng', timeRange: '06:00 - 10:00', employeeId: '', employeeName: '' },
+  { id: 'sh-2-2', dayOfWeek: 2, shiftName: 'Ca trưa', timeRange: '10:00 - 14:00', employeeId: '', employeeName: '' },
+  { id: 'sh-2-3', dayOfWeek: 2, shiftName: 'Ca chiều', timeRange: '14:00 - 18:00', employeeId: '', employeeName: '' },
+  // Day 3 (Wednesday)
+  { id: 'sh-3-1', dayOfWeek: 3, shiftName: 'Ca sáng', timeRange: '06:00 - 10:00', employeeId: '', employeeName: '' },
+  { id: 'sh-3-2', dayOfWeek: 3, shiftName: 'Ca trưa', timeRange: '10:00 - 14:00', employeeId: '', employeeName: '' },
+  { id: 'sh-3-3', dayOfWeek: 3, shiftName: 'Ca chiều', timeRange: '14:00 - 18:00', employeeId: '', employeeName: '' },
+  // Day 4 (Thursday)
+  { id: 'sh-4-1', dayOfWeek: 4, shiftName: 'Ca sáng', timeRange: '06:00 - 10:00', employeeId: '', employeeName: '' },
+  { id: 'sh-4-2', dayOfWeek: 4, shiftName: 'Ca trưa', timeRange: '10:00 - 14:00', employeeId: '', employeeName: '' },
+  { id: 'sh-4-3', dayOfWeek: 4, shiftName: 'Ca chiều', timeRange: '14:00 - 18:00', employeeId: '', employeeName: '' },
+  // Day 5 (Friday)
+  { id: 'sh-5-1', dayOfWeek: 5, shiftName: 'Ca sáng', timeRange: '06:00 - 10:00', employeeId: '', employeeName: '' },
+  { id: 'sh-5-2', dayOfWeek: 5, shiftName: 'Ca trưa', timeRange: '10:00 - 14:00', employeeId: '', employeeName: '' },
+  { id: 'sh-5-3', dayOfWeek: 5, shiftName: 'Ca chiều', timeRange: '14:00 - 18:00', employeeId: '', employeeName: '' },
+  // Day 6 (Saturday)
+  { id: 'sh-6-1', dayOfWeek: 6, shiftName: 'Ca sáng', timeRange: '06:00 - 10:00', employeeId: '', employeeName: '' },
+  { id: 'sh-6-2', dayOfWeek: 6, shiftName: 'Ca trưa', timeRange: '10:00 - 14:00', employeeId: '', employeeName: '' },
+  { id: 'sh-6-3', dayOfWeek: 6, shiftName: 'Ca chiều', timeRange: '14:00 - 18:00', employeeId: '', employeeName: '' },
+  // Day 0 (Sunday)
+  { id: 'sh-0-1', dayOfWeek: 0, shiftName: 'Ca sáng', timeRange: '06:00 - 10:00', employeeId: '', employeeName: '' },
+  { id: 'sh-0-2', dayOfWeek: 0, shiftName: 'Ca trưa', timeRange: '10:00 - 14:00', employeeId: '', employeeName: '' },
+  { id: 'sh-0-3', dayOfWeek: 0, shiftName: 'Ca chiều', timeRange: '14:00 - 18:00', employeeId: '', employeeName: '' }
 ];
 
 const DEFAULT_CATEGORIES = [
@@ -356,6 +370,15 @@ async function initializeDatabase() {
     await StoreCategory.insertMany(DEFAULT_CATEGORIES);
     await StoreConfig.create({ bypassLogin: false, activeUser: null });
     console.log('🌱 Seeding database for default-store completed successfully!');
+  } else {
+    // If database exists, verify if shifts are the updated 3 fixed ones (21 shifts)
+    const storeShiftsCount = await StoreShift.countDocuments();
+    const hasOldShiftsDefault = await StoreShift.findOne({ timeRange: '06:30 - 12:30' });
+    if (storeShiftsCount === 0 || hasOldShiftsDefault || storeShiftsCount < 21) {
+      await StoreShift.deleteMany({});
+      await StoreShift.insertMany(DEFAULT_SHIFTS);
+      console.log('🌱 Updated DEFAULT_SHIFTS for default store database to 3 fixed shifts!');
+    }
   }
 }
 
@@ -478,7 +501,17 @@ app.get('/api/db', async (req, res) => {
     const menu = await TenantMenuItem.find();
     const orders = await TenantOrder.find();
     const waste = await TenantWaste.find();
-    const shifts = await TenantShift.find();
+    
+    // Check and migrate/re-initialize shifts to the new 3 daily shifts (21 shifts total)
+    let shifts = await TenantShift.find();
+    const hasOldShifts = shifts.some(s => s.timeRange === '06:30 - 12:30' || s.timeRange === '12:30 - 18:30');
+    if (shifts.length === 0 || hasOldShifts || shifts.length < 21) {
+      await TenantShift.deleteMany({});
+      await TenantShift.insertMany(DEFAULT_SHIFTS);
+      shifts = await TenantShift.find();
+      console.log(`🌱 Migrated shifts for tenant DB: ${req.dbName}`);
+    }
+
     const shiftRequests = await TenantShiftRequest.find();
     const attendance = await TenantAttendance.find();
     const categories = await TenantCategory.find();
@@ -610,8 +643,10 @@ app.post('/api/db/seed', async (req, res) => {
       const dayOfWeek = currentDate.getDay();
       const dayShifts = DEFAULT_SHIFTS.filter(s => s.dayOfWeek === dayOfWeek);
       for (const shift of dayShifts) {
-        const checkInHour = shift.shiftName === 'Ca sáng' ? 6 : 12;
-        const checkOutHour = checkInHour + 6;
+        let checkInHour = 6;
+        if (shift.shiftName === 'Ca trưa') checkInHour = 10;
+        else if (shift.shiftName === 'Ca chiều') checkInHour = 14;
+        const checkOutHour = checkInHour + 4;
         
         attendanceToInsert.push({
           id: `att-usr-staff-${todayStr}-${shift.id}`,
@@ -620,7 +655,7 @@ app.post('/api/db/seed', async (req, res) => {
           date: todayStr,
           checkInTime: `${checkInHour.toString().padStart(2, '0')}:00`,
           checkOutTime: `${checkOutHour.toString().padStart(2, '0')}:00`,
-          durationHours: 5
+          durationHours: 4
         });
       }
 
@@ -767,6 +802,75 @@ app.post('/api/orders/checkout', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Lỗi khi thanh toán đơn hàng', details: err.message });
+  }
+});
+
+// POST update order status (with auto inventory restoration if cancelled)
+app.post('/api/orders/update-status', async (req, res) => {
+  try {
+    const { id, status } = req.body;
+    if (!id || !status) {
+      return res.status(400).json({ error: 'Thiếu thông tin cập nhật trạng thái đơn hàng' });
+    }
+
+    const TenantOrder = getTenantModel(req.dbName, 'Order', OrderSchema);
+    const TenantIngredient = getTenantModel(req.dbName, 'Ingredient', IngredientSchema);
+
+    const order = await TenantOrder.findOne({ id });
+    if (!order) return res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
+
+    const oldStatus = order.status;
+    if (oldStatus === status) {
+      return res.json({ success: true });
+    }
+
+    // If order is cancelled, restore ingredients back to stock
+    if (status === 'cancelled' && (oldStatus === 'preparing' || oldStatus === 'completed')) {
+      for (const item of order.items) {
+        if (item.recipe) {
+          for (const ingId of Object.keys(item.recipe)) {
+            let qtyNeeded = item.recipe[ingId];
+            const isLVariant = item.id.endsWith('-l') || item.name.endsWith('(L)');
+            if (item.size === 'L' && !isLVariant && ['cf', 'sua', 'suatuoi', 'duong'].includes(ingId)) {
+              qtyNeeded = Math.ceil(qtyNeeded * 1.3);
+            }
+            const totalRestore = qtyNeeded * item.qty;
+
+            await TenantIngredient.findOneAndUpdate(
+              { id: ingId },
+              { $inc: { stock: totalRestore } }
+            );
+          }
+        }
+      }
+    }
+    // If order was cancelled and now is re-activated to preparing/completed, deduct stock again
+    else if ((status === 'preparing' || status === 'completed') && oldStatus === 'cancelled') {
+      for (const item of order.items) {
+        if (item.recipe) {
+          for (const ingId of Object.keys(item.recipe)) {
+            let qtyNeeded = item.recipe[ingId];
+            const isLVariant = item.id.endsWith('-l') || item.name.endsWith('(L)');
+            if (item.size === 'L' && !isLVariant && ['cf', 'sua', 'suatuoi', 'duong'].includes(ingId)) {
+              qtyNeeded = Math.ceil(qtyNeeded * 1.3);
+            }
+            const totalDeduction = qtyNeeded * item.qty;
+
+            await TenantIngredient.findOneAndUpdate(
+              { id: ingId },
+              { $inc: { stock: -totalDeduction } }
+            );
+          }
+        }
+      }
+    }
+
+    order.status = status;
+    await order.save();
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi khi cập nhật trạng thái đơn hàng', details: err.message });
   }
 });
 
